@@ -22,9 +22,9 @@ services:
     command: >
       trade
       --logfile /freqtrade/user_data/logs/freqtrade.log
-      --db-url sqlite:////freqtrade/user_data/tradesv3.sqlite
+      --db-url sqlite:////freqtrade/user_data/nfix.live.sqlite
       --config /freqtrade/user_data/config.live.json
       --config /freqtrade/user_data/config.private.json
       --config /freqtrade/user_data/blacklist-binance.json
       --config /freqtrade/user_data/pairlist-volume-binance-usdt.json
-      --strategy NostalgiaForInfinityNextGen
+      --strategy NostalgiaForInfinityX
