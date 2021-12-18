@@ -35,8 +35,8 @@ class tbedit(NostalgiaForInfinityX):
 
     trailing_buy_order_enabled = True
     # Note: Please change the values of trailing_expire below to your preference, if you want to
-    # trailing_expire_seconds = 1800  # NOTE 5m timeframe
-    trailing_expire_seconds = 1800 / 5  # NOTE 1m timeframe
+    trailing_expire_seconds = 1800  # NOTE 5m timeframe
+    # trailing_expire_seconds = 1800 / 5  # NOTE 1m timeframe
     # trailing_expire_seconds = 1800*3    #NOTE 15m timeframe
 
     # If the current candle goes above min_uptrend_trailing_profit % before trailing_expire_seconds_uptrend seconds, buy the coin
