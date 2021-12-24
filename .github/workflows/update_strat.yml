@@ -22,7 +22,7 @@ jobs:
           mv pairlist-volume-binance-usdt.json user_data
           curl -O https://raw.githubusercontent.com/ShahAnuj2610/my-freqtrade/master/user_data/config.live.json && \
           mv config.live.json user_data
-          curl -O https://raw.githubusercontent.com/ShahAnuj2610/my-freqtrade/master/user_data/docker/Dockerfile.custom && \
+          curl -O https://raw.githubusercontent.com/ShahAnuj2610/my-freqtrade/master/docker/Dockerfile.custom && \
           mv Dockerfile.custom docker
       - name: Check for modified files
         id: git-check
