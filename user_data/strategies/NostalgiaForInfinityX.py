@@ -115,7 +115,7 @@ class NostalgiaForInfinityX(IStrategy):
     INTERFACE_VERSION = 2
 
     def version(self) -> str:
-        return "v11.0.920"
+        return "v11.0.922"
 
     # ROI table:
     minimal_roi = {
@@ -10626,6 +10626,14 @@ class NostalgiaForInfinityX(IStrategy):
                         | (dataframe['close'] < dataframe['ema_20'] * 0.93)
                         | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.024))
                     )
+                    item_buy_logic.append(
+                        (dataframe['btc_not_downtrend_1h'] == True)
+                        | (dataframe['mfi'] > 30.0)
+                        | (dataframe['cti_1h'] < -0.5)
+                        | (dataframe['close'] < dataframe['ema_20'] * 0.9)
+                        | (dataframe['close'] > (dataframe['sup2_1d'] * 1.0))
+                        | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.032))
+                    )
 
                 # Condition #12 - Semi swing. Local deeper dip. Uptrend.
                 elif index == 12:
@@ -11095,6 +11103,12 @@ class NostalgiaForInfinityX(IStrategy):
                         | (dataframe['tpct_change_144'] < 0.22)
                         | (dataframe['sma_200'] > dataframe['sma_200'].shift(24))
                         | (dataframe['sma_200_1h'] > dataframe['sma_200_1h'].shift(24))
+                        | (dataframe['close'] < dataframe['sma_30'] * 0.958)
+                    )
+                    item_buy_logic.append(
+                        (dataframe['ewo'] < -8.0)
+                        | (dataframe['tpct_change_144'] < 0.22)
+                        | (dataframe['hl_pct_change_48_1h'] < 0.8)
                         | (dataframe['close'] < dataframe['sma_30'] * 0.958)
                     )
 
