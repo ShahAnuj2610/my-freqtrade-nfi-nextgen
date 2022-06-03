@@ -115,7 +115,7 @@ class NostalgiaForInfinityX(IStrategy):
     INTERFACE_VERSION = 2
 
     def version(self) -> str:
-        return "v11.0.1005"
+        return "v11.0.1007"
 
     # ROI table:
     minimal_roi = {
@@ -10669,6 +10669,17 @@ class NostalgiaForInfinityX(IStrategy):
                         | (dataframe['close'] < dataframe['ema_20'] * 0.948)
                         | (dataframe['volume_mean_12'] > (dataframe['volume_mean_24'] * 0.9))
                     )
+                    item_buy_logic.append(
+                        (dataframe['btc_not_downtrend_1h'] == True)
+                        | (dataframe['mfi'] > 30.0)
+                        | (dataframe['rsi_14'] < 22.0)
+                        | (dataframe['cti_1h'] < -0.8)
+                        | (dataframe['crsi'] > 14.0)
+                        | (dataframe['tpct_change_144'] < 0.14)
+                        | (dataframe['sma_200'] > dataframe['sma_200'].shift(24))
+                        | (dataframe['close'] < dataframe['ema_20'] * 0.95)
+                        | (dataframe['close'] < dataframe['bb20_2_low'] * 0.995)
+                    )
 
                 # Condition #8 - Semi swing. Local deeper dip. Uptrend.
                 elif index == 8:
@@ -12766,6 +12777,17 @@ class NostalgiaForInfinityX(IStrategy):
                         | (dataframe['close'] < dataframe['ema_20'] * 0.93)
                         | (dataframe['bb40_2_delta'] > dataframe['ha_close'] * 0.05)
                         | (dataframe['ha_closedelta'] > dataframe['ha_close'] * 0.02)
+                    )
+                    item_buy_logic.append(
+                        (dataframe['cmf'] > -0.3)
+                        | (dataframe['rsi_14'] < 22.0)
+                        | (dataframe['cti'] < -0.8)
+                        | (dataframe['cti_1h'] < 0.5)
+                        | (dataframe['tpct_change_144'] < 0.1)
+                        | (dataframe['hl_pct_change_48_1h'] < 0.5)
+                        | (dataframe['close'] < dataframe['ema_20'] * 0.93)
+                        | (dataframe['bb40_2_delta'] > dataframe['ha_close'] * 0.05)
+                        | (dataframe['ha_closedelta'] > dataframe['ha_close'] * 0.04)
                     )
                     item_buy_logic.append(dataframe['volume'] < (dataframe['volume_mean_12'] * 1.4))
                     item_buy_logic.append(dataframe['volume_mean_12'] > (dataframe['volume_mean_24'] * 0.8))
