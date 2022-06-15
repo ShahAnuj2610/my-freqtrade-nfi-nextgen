@@ -115,7 +115,7 @@ class NostalgiaForInfinityX(IStrategy):
     INTERFACE_VERSION = 2
 
     def version(self) -> str:
-        return "v11.0.1116"
+        return "v11.0.1118"
 
     # ROI table:
     minimal_roi = {
@@ -9243,20 +9243,17 @@ class NostalgiaForInfinityX(IStrategy):
             elif (previous_sell_reason in ["sell_profit_maximizer_01"]) and (current_profit >= 0.01):
                 if (last_candle['rsi_14'] > 81.0):
                     return True, previous_sell_reason
-                elif (0.01 <= current_profit < 0.03):
+                elif (0.01 <= current_profit < 0.02):
                     if ((current_profit < (previous_profit - 0.005)) or (last_candle['rsi_14'] > 80.0)):
                         return True, previous_sell_reason
-                elif (0.03 <= current_profit < 0.05):
+                elif (0.02 <= current_profit < 0.03):
                     if ((current_profit < (previous_profit - 0.01)) or (last_candle['rsi_14'] > 80.0)):
                         return True, previous_sell_reason
-                elif (0.05 <= current_profit < 0.08):
+                elif (0.03 <= current_profit < 0.04):
                     if ((current_profit < (previous_profit - 0.02)) or (last_candle['rsi_14'] > 80.0)):
                         return True, previous_sell_reason
-                elif (0.08 <= current_profit < 0.12):
+                elif (0.04 <= current_profit < 0.05):
                     if ((current_profit < (previous_profit - 0.03)) or (last_candle['rsi_14'] > 80.0)):
-                        return True, previous_sell_reason
-                elif (0.12 <= current_profit):
-                    if ((current_profit < (previous_profit - 0.04)) or (last_candle['rsi_14'] > 80.0)):
                         return True, previous_sell_reason
 
         return False, None
@@ -13000,6 +12997,17 @@ class NostalgiaForInfinityX(IStrategy):
                         | (dataframe['tpct_change_144'] < 0.2)
                         | (dataframe['hl_pct_change_48_1h'] < 0.5)
                         | (dataframe['close'] < dataframe['ema_20'] * 0.95)
+                        | (dataframe['close'] < (dataframe['bb20_2_low'] * 0.99))
+                    )
+                    item_buy_logic.append(
+                        (dataframe['cmf'] > -0.3)
+                        | (dataframe['rsi_14'] < 28.0)
+                        | (dataframe['cti'] < -0.9)
+                        | (dataframe['cti_1h'] < 0.5)
+                        | (dataframe['rsi_14_1h'] < 50.0)
+                        | (dataframe['tpct_change_144'] < 0.2)
+                        | (dataframe['hl_pct_change_48_1h'] < 0.5)
+                        | (dataframe['close'] < dataframe['ema_20'] * 0.96)
                         | (dataframe['close'] < (dataframe['bb20_2_low'] * 0.99))
                     )
 
