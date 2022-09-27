@@ -117,7 +117,7 @@ class NostalgiaForInfinityX(IStrategy):
     INTERFACE_VERSION = 3
 
     def version(self) -> str:
-        return "v11.2.276"
+        return "v11.2.278"
 
 
     # ROI table:
@@ -13464,7 +13464,11 @@ class NostalgiaForInfinityX(IStrategy):
                         | (dataframe['rsi_14'] < 48.0)
                         | (dataframe['cti_1h'] < -0.25)
                         | (dataframe['rsi_14_1h'] > 70.0)
-                        | (dataframe['close'] < (dataframe['res2_1d'] * 1.0))
+                        |
+                        (
+                            (dataframe['close'] < (dataframe['res2_1d'] * 1.0))
+                            & (dataframe['btc_pct_close_max_72_5m'] < 1.01)
+                        )
                     )
 
                 # Condition #17 - Semi swing. Deep buy.
@@ -15511,9 +15515,13 @@ class NostalgiaForInfinityX(IStrategy):
                         | (dataframe['mfi'] > 30.0)
                         | (dataframe['rsi_14'] < 20.0)
                         | (dataframe['cti'] < -0.9)
-                        | (dataframe['cti_1h'] < 0.0)
-                        | (dataframe['tpct_change_144'] < 0.2)
-                        | (dataframe['hl_pct_change_48_1h'] < 0.3)
+                        |
+                        (
+                            (dataframe['cti_1h'] < -0.0)
+                            & (dataframe['btc_pct_close_max_72_5m'] < 1.05)
+                        )
+                        | (dataframe['tpct_change_144'] < 0.18)
+                        | (dataframe['hl_pct_change_48_1h'] < 0.25)
                         | (dataframe['btc_pct_close_max_72_5m'] < 1.03)
                         | (dataframe['close'] < dataframe['ema_20'] * 0.90)
                         | (dataframe['close'] < (dataframe['bb20_2_low'] * 0.955))
