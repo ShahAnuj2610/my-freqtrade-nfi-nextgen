@@ -116,7 +116,7 @@ class NostalgiaForInfinityX(IStrategy):
     INTERFACE_VERSION = 3
 
     def version(self) -> str:
-        return "v11.2.797"
+        return "v11.3.41"
 
 
     # ROI table:
@@ -202,16 +202,22 @@ class NostalgiaForInfinityX(IStrategy):
     rebuy_multi_4 = 1.0
     rebuy_multi_5 = 1.0
 
+    # BTC/ETH stakes
+    btc_stakes = ['BTC','ETH']
+
     # Stop thresholds
     # 1 entry, more than 1, leveraged
-    stop_thresholds_stable = [-0.18, -0.18, -0.18]
-    stop_thresholds_btc = [-0.18, -0.18, -0.18]
+    stop_thresholds_stable = [-0.19, -0.19, -0.19]
+    stop_thresholds_btc = [-0.19, -0.19, -0.19]
 
     # Additional vigorous dump checks
     insanity_dump_checks = False
 
     # Profit maximizer
     profit_max_enabled = True
+
+    # Maximizer threshold
+    profit_max_threshold = 0.04
 
     # Rapid more tags
     rapid_mode_tags = ['66', '67', '68', '69', '70', '71', '72']
@@ -2395,6 +2401,8 @@ class NostalgiaForInfinityX(IStrategy):
             self.stop_thresholds_btc = self.config['stop_thresholds_btc']
         if ('insanity_dump_checks' in self.config):
             self.insanity_dump_checks = self.config['insanity_dump_checks']
+        if ('profit_max_threshold' in self.config):
+            self.profit_max_threshold = self.config['profit_max_threshold']
         if self.target_profit_cache is None:
             bot_name = ""
             if ('bot_name' in self.config):
@@ -2945,7 +2953,7 @@ class NostalgiaForInfinityX(IStrategy):
         is_rebuy = count_of_buys > 2
         is_leverage = bool(re.match(leverage_pattern,trade.pair))
         stop_index = 0 if is_rebuy and not is_leverage else 1 if not is_rebuy and not is_leverage else 2
-        is_btc_stake = self.config['stake_currency'] in ['BTC','ETH']
+        is_btc_stake = self.config['stake_currency'] in self.btc_stakes
 
         # Absolute limit, just in case...
         if (
@@ -9455,13 +9463,13 @@ class NostalgiaForInfinityX(IStrategy):
                     if (current_profit < (previous_profit - 0.06)):
                         return True, previous_sell_reason
                 elif (current_profit < -0.1):
-                    if (current_profit < (previous_profit - 0.05)):
+                    if (current_profit < (previous_profit - 0.12)):
                         return True, previous_sell_reason
                 elif (current_profit < -0.04):
-                    if (current_profit < (previous_profit - 0.04)):
+                    if (current_profit < (previous_profit - 0.05)):
                         return True, previous_sell_reason
                 else:
-                    if (current_profit < (previous_profit - 0.03)):
+                    if (current_profit < (previous_profit - 0.045)):
                         return True, previous_sell_reason
             elif (previous_sell_reason in ["sell_stoploss_doom_1", "sell_stoploss_stop_1", "sell_stoploss_rpd_stop_1", "sell_stoploss_hlf_stop_1"]):
                 if (current_profit < (previous_profit - 0.005)):
@@ -9512,7 +9520,7 @@ class NostalgiaForInfinityX(IStrategy):
                         return True, previous_sell_reason
             elif (previous_sell_reason in ["sell_profit_maximizer_01"]) and (current_profit >= 0.01):
                 if (0.001 <= current_profit < 0.01):
-                    if ((current_profit < (previous_profit - 0.005)) or (last_candle['rsi_14'] > 90.0)):
+                    if ((current_profit < (previous_profit - 0.01)) or (last_candle['rsi_14'] > 90.0)):
                         return True, previous_sell_reason
                 elif (0.01 <= current_profit < 0.02):
                     if ((current_profit < (previous_profit - 0.01)) or (last_candle['rsi_14'] > 90.0)):
@@ -9521,16 +9529,16 @@ class NostalgiaForInfinityX(IStrategy):
                     if ((current_profit < (previous_profit - 0.02)) or (last_candle['rsi_14'] > 90.0)):
                         return True, previous_sell_reason
                 elif (0.03 <= current_profit < 0.05):
-                    if ((current_profit < (previous_profit - 0.025)) or (last_candle['rsi_14'] > 90.0)):
-                        return True, previous_sell_reason
-                elif (0.05 <= current_profit < 0.08):
                     if ((current_profit < (previous_profit - 0.03)) or (last_candle['rsi_14'] > 90.0)):
                         return True, previous_sell_reason
+                elif (0.05 <= current_profit < 0.08):
+                    if ((current_profit < (previous_profit - 0.04)) or (last_candle['rsi_14'] > 90.0)):
+                        return True, previous_sell_reason
                 elif (0.08 <= current_profit < 0.12):
-                    if ((current_profit < (previous_profit - 0.035)) or (last_candle['rsi_14'] > 90.0)):
+                    if ((current_profit < (previous_profit - 0.05)) or (last_candle['rsi_14'] > 90.0)):
                         return True, previous_sell_reason
                 elif (0.12 <= current_profit):
-                    if ((current_profit < (previous_profit - 0.04)) or (last_candle['rsi_14'] > 90.0)):
+                    if ((current_profit < (previous_profit - 0.06)) or (last_candle['rsi_14'] > 90.0)):
                         return True, previous_sell_reason
             else:
                 if (0.001 <= current_profit < 0.01):
@@ -9665,7 +9673,7 @@ class NostalgiaForInfinityX(IStrategy):
             sell_max, signal_name_max = self.sell_profit_target(pair, trade, current_time, current_rate, current_profit, last_candle, previous_candle_1, previous_rate, previous_profit, previous_sell_reason, previous_time_profit_reached, enter_tags)
             if sell_max and signal_name_max is not None:
                 return f"{signal_name_max}_m ( {enter_tag})"
-            if (current_profit > (previous_profit + 0.03)):
+            if (current_profit > (previous_profit + 0.03)) and (previous_sell_reason not in ["sell_stoploss_stop_2"]):
                 # Update the target, raise it.
                 mark_pair, mark_signal = self.mark_profit_target(pair, True, previous_sell_reason, trade, current_time, current_rate, current_profit, last_candle, previous_candle_1)
                 if mark_pair:
@@ -9688,7 +9696,7 @@ class NostalgiaForInfinityX(IStrategy):
                     return f"{signal_name} ( {enter_tag})"
         else:
             if (
-                    (current_profit >= 0.04)
+                    (current_profit >= self.profit_max_threshold)
             ):
                 previous_profit = None
                 if self.target_profit_cache is not None and pair in self.target_profit_cache.data:
@@ -9862,6 +9870,9 @@ class NostalgiaForInfinityX(IStrategy):
         informative_1h['hl_pct_change_24'] = self.range_percent_change(informative_1h, 'HL', 24)
         informative_1h['hl_pct_change_12'] = self.range_percent_change(informative_1h, 'HL', 12)
         informative_1h['hl_pct_change_6'] = self.range_percent_change(informative_1h, 'HL', 6)
+
+        # 1h not strong downtrend
+        informative_1h['not_downtrend'] = ((informative_1h['close'] > informative_1h['close'].shift(2)) | (informative_1h['crsi'] > 30.0))
 
         tok = time.perf_counter()
         log.debug(f"[{metadata['pair']}] informative_1h_indicators took: {tok - tik:0.4f} seconds.")
@@ -10488,7 +10499,10 @@ class NostalgiaForInfinityX(IStrategy):
                         | ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.01))
                     )
                     item_buy_logic.append(
-                        (dataframe['cmf'] > 0.2)
+                        (
+                            (dataframe['cmf'] > 0.2)
+                            & (dataframe['hl_pct_change_36'] < 0.22)
+                        )
                         |
                         (
                             (dataframe['mfi'] > 30.0)
@@ -10502,6 +10516,7 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['cti_1h'] < -0.5)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.04)
                             & (dataframe['hl_pct_change_48_1h'] < 0.6)
+                            & (dataframe['hl_pct_change_36'] < 0.22)
                         )
                         | (dataframe['rsi_14_1h'] < 30.0)
                         |
@@ -10514,6 +10529,7 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['close_max_48'] < (dataframe['close'] * 1.1))
                             & (dataframe['hl_pct_change_48_1h'] < 0.6)
                             & (dataframe['close_max_48'] > (dataframe['close'] * 1.05))
+                            & (dataframe['hl_pct_change_36'] < 0.22)
                         )
                         |
                         (
@@ -10596,25 +10612,66 @@ class NostalgiaForInfinityX(IStrategy):
                         | (dataframe['rsi_14'] < (dataframe['rsi_14_1h'] - 52.0))
                     )
                     item_buy_logic.append(
-                        (dataframe['cmf'] > -0.0)
+                        (
+                            (dataframe['cmf'] > -0.0)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
                         | (dataframe['mfi'] > 20.0)
-                        | (dataframe['rsi_14'] < 15.0)
+                        |
+                        (
+                            (dataframe['rsi_14'] < 15.0)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
+                        )
                         | (dataframe['r_480'] > -30.0)
                         | (dataframe['cti_1h'] < 0.5)
                         | (dataframe['rsi_14_1h'] < 50.0)
                         | (dataframe['r_14_1h'] < -75.0)
                         | (dataframe['r_480_1h'] > -20.0)
-                        | (dataframe['tpct_change_144'] < 0.16)
-                        | (dataframe['close_max_48'] < (dataframe['close'] * 1.12))
-                        | (dataframe['hl_pct_change_36'] < 0.12)
-                        | (dataframe['hl_pct_change_48_1h'] < 0.3)
-                        | (dataframe['btc_pct_close_max_72_5m'] < 1.01)
-                        | (dataframe['close'] < (dataframe['res1_1d'] * 1.0))
+                        |
+                        (
+                            (dataframe['tpct_change_144'] < 0.16)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
+                        |
+                        (
+                            (dataframe['close_max_48'] < (dataframe['close'] * 1.12))
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
+                        )
+                        |
+                        (
+                            (dataframe['hl_pct_change_36'] < 0.12)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
+                        )
+                        |
+                        (
+                            (dataframe['hl_pct_change_48_1h'] < 0.3)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
+                        |
+                        (
+                            (dataframe['btc_pct_close_max_72_5m'] < 1.01)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
+                        |
+                        (
+                            (dataframe['close'] < (dataframe['res1_1d'] * 1.0))
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
                         | (dataframe['close'] < dataframe['sma_30'] * 0.93)
                         | (dataframe['close'] < dataframe['ema_20'] * 0.95)
-                        | (dataframe['close'] < dataframe['bb20_2_low'] * 0.999)
+                        |
+                        (
+                            (dataframe['close'] < dataframe['bb20_2_low'] * 0.999)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
                         | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.02))
-                        | (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.999))
+                        |
+                        (
+                            (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.999))
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
+                        )
                         | ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.01))
                         | (dataframe['rsi_14_15m'] < 30.0)
                         | (dataframe['cti_15m'] < -0.9)
@@ -11185,44 +11242,57 @@ class NostalgiaForInfinityX(IStrategy):
                         | (dataframe['close'] < dataframe['bb20_2_low'] * 0.99)
                     )
                     item_buy_logic.append(
-                        (dataframe['cmf'] > 0.2)
+                        (
+                            (dataframe['cmf'] > 0.2)
+                            & (dataframe['ema_200_pct_change_144'] > -0.1)
+                        )
                         |
                         (
                             (dataframe['mfi'] > 36.0)
-                            & (dataframe['btc_pct_close_max_72_5m'] < 1.04)
+                            & (dataframe['btc_pct_close_max_72_5m'] < 1.03)
                         )
                         |
                         (
                             (dataframe['rsi_14'] < 28.0)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                            & (dataframe['not_downtrend_1h'])
                         )
                         |
                         (
                             (dataframe['cti'] < -0.9)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
+                            & (dataframe['not_downtrend_1h'])
                         )
                         |
                         (
                             (dataframe['cti_1h'] < -0.8)
                             & (dataframe['rsi_14'] < 36.0)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['ema_200_pct_change_144'] > -0.1)
                         )
                         |
                         (
                             (dataframe['rsi_14_1h'] < 30.0)
                             & (dataframe['rsi_14'] < 36.0)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['ema_200_pct_change_144'] > -0.1)
                         )
                         |
                         (
                             (dataframe['crsi_1h'] > 25.0)
                             & (dataframe['hl_pct_change_48_1h'] < 0.45)
                             & (dataframe['rsi_14'] < 36.0)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                            & (dataframe['btc_pct_close_max_24_5m'] < 1.04)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
                         )
                         |
                         (
                             (dataframe['tpct_change_144'] < 0.08)
-                            & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['btc_pct_close_max_72_5m'] < 1.03)
                         )
                         |
                         (
@@ -11235,6 +11305,9 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['hl_pct_change_48_1h'] < 0.25)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
                             & (dataframe['rsi_14'] < 36.0)
+                            & (dataframe['btc_pct_close_max_24_5m'] < 1.04)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                            & (dataframe['not_downtrend_1h'])
                         )
                         |
                         (
@@ -11250,17 +11323,25 @@ class NostalgiaForInfinityX(IStrategy):
                             & (dataframe['crsi_1h'] > 16.0)
                             & (dataframe['hl_pct_change_48_1h'] < 0.45)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['btc_pct_close_max_24_5m'] < 1.04)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
                         )
                         |
                         (
                             (dataframe['close'] > (dataframe['sup1_1d'] * 1.0))
                             & (dataframe['close'] > (dataframe['sma_200'] * 0.9))
                             & (dataframe['hl_pct_change_48_1h'] < 0.45)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                            & (dataframe['btc_pct_close_max_24_5m'] < 1.04)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
+                            & (dataframe['not_downtrend_1h'])
                         )
                         |
                         (
                             (dataframe['close'] < dataframe['ema_20'] * 0.94)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
                         )
                         |
                         (
@@ -11271,6 +11352,8 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['rsi_14_15m'] < 28.0)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['ema_200_pct_change_144'] > -0.1)
+                            & (dataframe['not_downtrend_1h'])
                         )
                         | (dataframe['cti_15m'] < -0.92)
                     )
@@ -11655,12 +11738,17 @@ class NostalgiaForInfinityX(IStrategy):
                     item_buy_logic.append(
                         (dataframe['cmf'] > 0.1)
                         | (dataframe['mfi'] > 46.0)
-                        | (dataframe['rsi_14'] < 12.0)
+                        |
+                        (
+                            (dataframe['rsi_14'] < 12.0)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
                         | (dataframe['cti'] < -0.95)
                         |
                         (
                             (dataframe['cti_1h'] < -0.8)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['btc_pct_close_max_24_5m'] < 1.04)
                         )
                         | (dataframe['rsi_14_1h'] < 20.0)
                         |
@@ -11680,6 +11768,7 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['tpct_change_144'] < 0.16)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.03)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
                         )
                         | (dataframe['close_max_48'] < (dataframe['close'] * 1.12))
                         | (dataframe['hl_pct_change_48_1h'] < 0.16)
@@ -11687,6 +11776,7 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['btc_pct_close_max_72_5m'] < 1.01)
                             & (dataframe['tpct_change_144'] < 0.25)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
                         )
                         |
                         (
@@ -11703,6 +11793,7 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['rsi_14_15m'] < 15.0)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.03)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
                         )
                     )
 
@@ -11786,9 +11877,14 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['cti_1h'] < 0.8)
                             & (dataframe['hl_pct_change_48_1h'] < 0.7)
                             & (dataframe['ema_200_pct_change_144'] < 0.12)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
                         )
                         | (dataframe['rsi_14_1h'] < 40.0)
-                        | (dataframe['r_14_1h'] < -75.0)
+                        |
+                        (
+                            (dataframe['r_14_1h'] < -75.0)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                        )
                         |
                         (
                             (dataframe['crsi_1h'] > 40.0)
@@ -11800,11 +11896,21 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['hl_pct_change_48_1h'] < 0.4)
                             & (dataframe['ema_200_pct_change_144'] < 0.1)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
                         )
                         | (dataframe['ema_200'] > (dataframe['ema_200'].shift(12) * 1.01))
                         | (dataframe['close'] < dataframe['sma_30'] * 0.89)
-                        | (dataframe['close'] < dataframe['ema_20'] * 0.93)
-                        | (dataframe['close'] < dataframe['bb20_2_low'] * 0.99)
+                        |
+                        (
+                            (dataframe['close'] < dataframe['ema_20'] * 0.93)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                        )
+                        |
+                        (
+                            (dataframe['close'] < dataframe['bb20_2_low'] * 0.99)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                            & (dataframe['ema_200_pct_change_288'] < 0.16)
+                        )
                         | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.034))
                         | (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.97))
                         | ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.02))
@@ -12100,61 +12206,97 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['cmf'] > 0.0)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.05)
+                            & (dataframe['hl_pct_change_36'] < 0.14)
                         )
-                        | (dataframe['mfi'] > 25.0)
+                        |
+                        (
+                            (dataframe['mfi'] > 25.0)
+                            & (dataframe['hl_pct_change_36'] < 0.14)
+                        )
                         |
                         (
                             (dataframe['rsi_14'] < 15.0)
                             & (dataframe['crsi_1h'] > 2.0)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
                         )
                         |
                         (
                             (dataframe['cti'] < -0.9)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.05)
                             & (dataframe['crsi_1h'] > 2.0)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                         |
                         (
                             (dataframe['crsi_1h'] > 20.0)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                            & (dataframe['tpct_change_2'] < 0.06)
                         )
                         |
                         (
                             (dataframe['tpct_change_144'] < 0.16)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.05)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                            & (dataframe['tpct_change_2'] < 0.06)
                         )
                         | (dataframe['close_max_48'] < (dataframe['close'] * 1.1))
                         |
                         (
                             (dataframe['btc_pct_close_max_72_5m'] < 1.03)
                             & (dataframe['btc_not_downtrend_1h'] == True)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                            & (dataframe['tpct_change_2'] < 0.06)
                         )
                         |
                         (
                             (dataframe['sma_200'] > dataframe['sma_200'].shift(48))
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.05)
+                            & (dataframe['hl_pct_change_36'] < 0.14)
                         )
                         |
                         (
                             (dataframe['sma_200_1h'] > dataframe['sma_200_1h'].shift(48))
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                            & (dataframe['tpct_change_2'] < 0.06)
                         )
                         | (dataframe['ema_200'] > (dataframe['ema_200'].shift(12) * 1.01))
                         |
                         (
                             (dataframe['close'] > (dataframe['sma_200'] * 0.9))
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.05)
+                            & (dataframe['hl_pct_change_36'] < 0.14)
+                            & (dataframe['tpct_change_2'] < 0.06)
                         )
                         |
                         (
                             (dataframe['close'] > (dataframe['sup_level_1h'] * 0.9))
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.05)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                            & (dataframe['tpct_change_2'] < 0.06)
                         )
-                        | (dataframe['close'] < dataframe['sma_30'] * 0.88)
-                        | (dataframe['close'] < dataframe['ema_20'] * 0.9)
+                        |
+                        (
+                            (dataframe['close'] < dataframe['sma_30'] * 0.88)
+                            & (dataframe['hl_pct_change_36'] < 0.24)
+                        )
+                        |
+                        (
+                            (dataframe['close'] < dataframe['ema_20'] * 0.9)
+                            & (dataframe['hl_pct_change_36'] < 0.24)
+                        )
                         | (dataframe['close'] < dataframe['bb20_2_low'] * 0.96)
-                        | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.04))
-                        | (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.93))
+                        |
+                        (
+                            ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.04))
+                            & (dataframe['hl_pct_change_36'] < 0.24)
+                        )
+                        |
+                        (
+                            (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.93))
+                            & (dataframe['hl_pct_change_36'] < 0.24)
+                        )
                         | ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.04))
                     )
 
@@ -12217,15 +12359,28 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['cmf'] > 0.1)
                             & (dataframe['cti_1h'] < -0.0)
                         )
-                        | (dataframe['mfi'] > 25.0)
-                        | (dataframe['crsi'] > 10.0)
+                        |
+                        (
+                            (dataframe['mfi'] > 25.0)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
+                        |
+                        (
+                            (dataframe['crsi'] > 10.0)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
                         | (dataframe['cmf_1h'] > 0.2)
                         |
                         (
                             (dataframe['cti_1h'] < -0.8)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['crsi'] > 5.0)
                         )
-                        | (dataframe['rsi_14_1h'] < 30.0)
+                        |
+                        (
+                            (dataframe['rsi_14_1h'] < 30.0)
+                            & (dataframe['crsi'] > 5.0)
+                        )
                         | (dataframe['tpct_change_144'] < 0.1)
                         | (dataframe['close_max_48'] < (dataframe['close'] * 1.08))
                         |
@@ -12233,12 +12388,15 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['btc_pct_close_max_72_5m'] < 1.03)
                             & (dataframe['btc_not_downtrend_1h'] == True)
                             & (dataframe['cti_1h'] < 0.8)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
                         )
                         | (dataframe['ema_200'] > (dataframe['ema_200'].shift(12) * 1.01))
                         |
                         (
                             (dataframe['close'] < dataframe['ema_20'] * 0.95)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['crsi'] > 5.0)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
                         )
                         | (dataframe['close'] < dataframe['bb20_2_low'] * 0.98)
                         | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.02))
@@ -12635,57 +12793,92 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['cmf'] > -0.1)
                             & (dataframe['ema_200_pct_change_288'] < 0.18)
                             & (dataframe['hl_pct_change_6_1h'] < 0.25)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                            & (dataframe['tpct_change_2'] < 0.06)
                         )
                         |
                         (
                             (dataframe['mfi'] > 40.0)
                             & (dataframe['close_max_48'] < (dataframe['close'] * 1.2))
+                            & (dataframe['hl_pct_change_36'] < 0.12)
                         )
                         |
                         (
                             (dataframe['rsi_14'] < 20.0)
                             & (dataframe['hl_pct_change_6_1h'] < 0.25)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                            & (dataframe['tpct_change_2'] < 0.06)
+                            & (dataframe['ema_200_pct_change_288'] < 0.16)
                         )
-                        | (dataframe['r_480'] > -30.0)
+                        |
+                        (
+                            (dataframe['r_480'] > -30.0)
+                            & (dataframe['ema_200_pct_change_288'] < 0.16)
+                        )
                         |
                         (
                             (dataframe['ewo'] > 6.0)
                             & (dataframe['hl_pct_change_6_1h'] < 0.25)
                         )
-                        | (dataframe['cti_1h'] < 0.0)
+                        |
+                        (
+                            (dataframe['cti_1h'] < 0.0)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
+                        )
                         | (dataframe['rsi_14_1h'] < 40.0)
                         |
                         (
                             (dataframe['r_14_1h'] < -90.0)
                             & (dataframe['ema_200_pct_change_288'] < 0.2)
-                            & (dataframe['hl_pct_change_36'] < 0.3)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
                         )
-                        | (dataframe['tpct_change_144'] < 0.1)
-                        | (dataframe['close_max_48'] < (dataframe['close'] * 1.1))
+                        |
+                        (
+                            (dataframe['tpct_change_144'] < 0.1)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
+                            & (dataframe['tpct_change_2'] < 0.06)
+                        )
+                        |
+                        (
+                            (dataframe['close_max_48'] < (dataframe['close'] * 1.1))
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
+                            & (dataframe['tpct_change_2'] < 0.06)
+                        )
                         |
                         (
                             (dataframe['hl_pct_change_48_1h'] < 0.3)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.04)
                             & (dataframe['cmf'] > -0.3)
-                            & (dataframe['hl_pct_change_36'] < 0.3)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
                         )
                         |
                         (
                             (dataframe['btc_pct_close_max_72_5m'] < 1.01)
                             & (dataframe['cti_1h'] < 0.8)
                             & (dataframe['cmf'] > -0.3)
-                            & (dataframe['hl_pct_change_36'] < 0.3)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                            & (dataframe['crsi_1h'] > 10.0)
+                            & (dataframe['ema_200_pct_change_288'] < 0.16)
                         )
-                        | (dataframe['ema_200'] > (dataframe['ema_200'].shift(12) * 1.01))
+                        |
+                        (
+                            (dataframe['ema_200'] > (dataframe['ema_200'].shift(12) * 1.01))
+                            & (dataframe['ema_200_pct_change_288'] < 0.16)
+                        )
                         | (dataframe['close'] < dataframe['sma_30'] * 0.88)
                         | (dataframe['close'] < dataframe['ema_20'] * 0.9)
-                        | (dataframe['close'] < dataframe['bb20_2_low'] * 0.97)
+                        |
+                        (
+                            (dataframe['close'] < dataframe['bb20_2_low'] * 0.97)
+                            & (dataframe['tpct_change_2'] < 0.06)
+                        )
                         | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.034))
                         |
                         (
                             (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.98))
                             & (dataframe['hl_pct_change_36'] < 0.3)
                             & (dataframe['hl_pct_change_48_1h'] < 0.5)
+                            & (dataframe['crsi_1h'] > 10.0)
                         )
                         |
                         (
@@ -12835,10 +13028,18 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['hl_pct_change_48_1h'] < 0.3)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.03)
                         )
-                        | (dataframe['close'] < dataframe['sma_30'] * 0.9)
+                        |
+                        (
+                            (dataframe['close'] < dataframe['sma_30'] * 0.9)
+                            & (dataframe['btc_pct_close_max_24_5m'] < 1.05)
+                        )
                         | (dataframe['close'] < dataframe['ema_20'] * 0.92)
                         | (dataframe['close'] < dataframe['bb20_2_low'] * 0.98)
-                        | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.034))
+                        |
+                        (
+                            ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.034))
+                            & (dataframe['btc_pct_close_max_24_5m'] < 1.05)
+                        )
                         |
                         (
                             (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.99))
@@ -13036,12 +13237,18 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['mfi'] > 30.0)
                             & ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.0155))
                         )
-                        | (dataframe['rsi_14'] < 10.0)
+                        |
+                        (
+                            (dataframe['rsi_14'] < 10.0)
+                            & (dataframe['tpct_change_144'] < 0.22)
+                        )
                         |
                         (
                             (dataframe['cti'] < -0.92)
                             & (dataframe['hl_pct_change_48_1h'] < 0.7)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['cmf'] > -0.4)
+                            & (dataframe['tpct_change_144'] < 0.22)
                         )
                         | (dataframe['r_480'] > -30.0)
                         | (dataframe['crsi'] > 30.0)
@@ -13050,17 +13257,21 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['cti_1h'] < -0.5)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.03)
                             & (dataframe['cmf'] > -0.4)
+                            & (dataframe['tpct_change_144'] < 0.22)
+                            & (dataframe['hl_pct_change_36'] < 0.1)
                         )
                         | (dataframe['rsi_14_1h'] < 30.0)
                         |
                         (
                             (dataframe['r_14_1h'] < -95.0)
                             & ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.0155))
+                            & (dataframe['tpct_change_144'] < 0.22)
                         )
                         |
                         (
                             (dataframe['crsi_1h'] > 30.0)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.1)
                         )
                         | (dataframe['tpct_change_144'] < 0.08)
                         |
@@ -13074,6 +13285,8 @@ class NostalgiaForInfinityX(IStrategy):
                             & (dataframe['btc_not_downtrend_1h'] == True)
                             & (dataframe['hl_pct_change_48_1h'] < 0.7)
                             & ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.0155))
+                            & (dataframe['tpct_change_144'] < 0.22)
+                            & (dataframe['hl_pct_change_36'] < 0.1)
                         )
                         | (dataframe['ema_200'] > (dataframe['ema_200'].shift(12) * 1.01))
                         |
@@ -13357,7 +13570,10 @@ class NostalgiaForInfinityX(IStrategy):
                         | ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.01))
                     )
                     item_buy_logic.append(
-                        (dataframe['cmf'] > 0.0)
+                        (
+                            (dataframe['cmf'] > 0.0)
+                            & (dataframe['ema_200_pct_change_144'] < 0.2)
+                        )
                         |
                         (
                             (dataframe['mfi'] > 30.0)
@@ -13365,12 +13581,17 @@ class NostalgiaForInfinityX(IStrategy):
                             & (dataframe['ema_200_pct_change_144'] < 0.3)
                             & (dataframe['hl_pct_change_48_1h'] < 0.5)
                         )
-                        | (dataframe['rsi_14'] < 15.0)
+                        |
+                        (
+                            (dataframe['rsi_14'] < 15.0)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
                         | (dataframe['cti_1h'] < -0.9)
                         |
                         (
                             (dataframe['rsi_14_1h'] < 40.0)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                         |
                         (
@@ -13383,6 +13604,7 @@ class NostalgiaForInfinityX(IStrategy):
                             & (dataframe['cti_1h'] < 0.85)
                             & (dataframe['ema_200_pct_change_144'] < 0.3)
                             & (dataframe['hl_pct_change_48_1h'] < 0.5)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
                         )
                         | (dataframe['tpct_change_144'] < 0.1)
                         | (dataframe['close_max_48'] < (dataframe['close'] * 1.1))
@@ -13404,6 +13626,7 @@ class NostalgiaForInfinityX(IStrategy):
                             & (dataframe['btc_not_downtrend_1h'] == True)
                             & (dataframe['hl_pct_change_48_1h'] < 0.8)
                             & (dataframe['close'] > (dataframe['sma_200'] * 0.95))
+                            & (dataframe['ema_200_pct_change_144'] < 0.2)
                         )
                         | (dataframe['ema_200'] > (dataframe['ema_200'].shift(12) * 1.01))
                         | (dataframe['close'] < dataframe['sma_30'] * 0.88)
@@ -13414,16 +13637,21 @@ class NostalgiaForInfinityX(IStrategy):
                             & (dataframe['cti_1h'] < 0.85)
                             & (dataframe['ema_200_pct_change_144'] < 0.3)
                             & (dataframe['hl_pct_change_48_1h'] < 0.5)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
                         )
                         | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.044))
                         |
                         (
                             (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.955))
-                            & (dataframe['hl_pct_change_36'] < 0.26)
                             & (dataframe['hl_pct_change_48_1h'] < 0.5)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                         | ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.03))
-                        | (dataframe['rsi_14_15m'] < 20.0)
+                        |
+                        (
+                            (dataframe['rsi_14_15m'] < 20.0)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                        )
                         | (dataframe['cti_15m'] < -0.9)
                     )
 
@@ -13599,14 +13827,22 @@ class NostalgiaForInfinityX(IStrategy):
                         | (dataframe['cti_15m'] < -0.9)
                     )
                     item_buy_logic.append(
-                        (dataframe['cmf'] > 0.0)
+                        (
+                            (dataframe['cmf'] > 0.0)
+                            & (dataframe['tpct_change_2'] < 0.06)
+                        )
                         | (dataframe['mfi'] > 40.0)
-                        | (dataframe['rsi_14'] < 20.0)
+                        |
+                        (
+                            (dataframe['rsi_14'] < 20.0)
+                            & (dataframe['tpct_change_2'] < 0.06)
+                        )
                         |
                         (
                             (dataframe['cti'] < -0.9)
                             & (dataframe['close'] < dataframe['bb20_2_low'] * 0.999)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                         |
                         (
@@ -13618,22 +13854,28 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['cti_1h'] < 0.0)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                            & (dataframe['cmf'] > -0.4)
                         )
                         | (dataframe['rsi_14_1h'] < 30.0)
                         |
                         (
                             (dataframe['tpct_change_144'] < 0.16)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['tpct_change_2'] < 0.06)
                         )
                         |
                         (
                             (dataframe['close_max_48'] < (dataframe['close'] * 1.16))
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['tpct_change_2'] < 0.06)
                         )
                         |
                         (
                             (dataframe['hl_pct_change_36'] < 0.2)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['tpct_change_2'] < 0.06)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                         | (dataframe['hl_pct_change_48_1h'] < 0.2)
                         |
@@ -13641,9 +13883,16 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['btc_pct_close_max_72_5m'] < 1.03)
                             & (dataframe['cti_1h'] < 0.5)
                             & (dataframe['tpct_change_144'] < 0.26)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                            & (dataframe['cmf'] > -0.4)
                         )
                         | (dataframe['ema_200'] > (dataframe['ema_200'].shift(12) * 1.01))
-                        | (dataframe['close'] > (dataframe['sma_200'] * 0.99))
+                        |
+                        (
+                            (dataframe['close'] > (dataframe['sma_200'] * 0.99))
+                            & (dataframe['tpct_change_2'] < 0.06)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                        )
                         | (dataframe['close'] < dataframe['sma_30'] * 0.86)
                         | (dataframe['close'] < dataframe['ema_20'] * 0.89)
                         | (dataframe['close'] < dataframe['bb20_2_low'] * 0.95)
@@ -13765,34 +14014,44 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['cmf'] > -0.1)
                             & (dataframe['crsi_1h'] > 8.0)
+                            & (dataframe['ema_200_pct_change_288'] > -0.16)
                         )
                         |
                         (
                             (dataframe['mfi'] > 30.0)
                             & (dataframe['crsi_1h'] > 8.0)
+                            & (dataframe['ema_200_pct_change_288'] > -0.16)
                         )
-                        | (dataframe['cti_1h'] < -0.8)
+                        |
+                        (
+                            (dataframe['cti_1h'] < -0.8)
+                            & (dataframe['ema_200_pct_change_288'] > -0.16)
+                        )
                         | (dataframe['crsi_1h'] > 25.0)
                         |
                         (
                             (dataframe['tpct_change_144'] < 0.2)
                             & (dataframe['crsi_1h'] > 8.0)
+                            & (dataframe['ema_200_pct_change_288'] > -0.16)
                         )
                         |
                         (
                             (dataframe['hl_pct_change_48_1h'] < 0.5)
                             & (dataframe['crsi_1h'] > 8.0)
+                            & (dataframe['ema_200_pct_change_288'] > -0.16)
                         )
                         |
                         (
                             (dataframe['close'] > (dataframe['sma_200'] * 0.9))
                             & (dataframe['crsi_1h'] > 8.0)
+                            & (dataframe['ema_200_pct_change_288'] > -0.16)
                         )
                         |
                         (
                             (dataframe['close'] > (dataframe['sma_200_1h'] * 0.9))
                             & (dataframe['tpct_change_144'] < 0.25)
                             & (dataframe['crsi_1h'] > 8.0)
+                            & (dataframe['ema_200_pct_change_288'] > -0.16)
                         )
                         |
                         (
@@ -14012,6 +14271,7 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['cti'] < -0.8)
                             & (dataframe['cmf'] > -0.3)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
                         )
                         |
                         (
@@ -14021,6 +14281,7 @@ class NostalgiaForInfinityX(IStrategy):
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.02)
                             & (dataframe['ema_200_pct_change_144'] < 0.16)
                             & (dataframe['cmf'] > -0.3)
+                            & (dataframe['ema_200_pct_change_288'] < 0.1)
                         )
                         | (dataframe['cti_1h'] < 0.0)
                         | (dataframe['rsi_14_1h'] < 50.0)
@@ -14031,18 +14292,34 @@ class NostalgiaForInfinityX(IStrategy):
                         )
                         | (dataframe['tpct_change_144'] < 0.05)
                         | (dataframe['close_max_48'] < (dataframe['close'] * 1.05))
-                        | (dataframe['hl_pct_change_48_1h'] < 0.26)
+                        |
+                        (
+                            (dataframe['hl_pct_change_48_1h'] < 0.26)
+                            & (dataframe['ema_200_pct_change_288'] < 0.1)
+                        )
                         |
                         (
                             (dataframe['close'] < (dataframe['res1_1d'] * 1.0))
                             & (dataframe['cti_1h'] < 0.5)
                             & (dataframe['cmf'] > -0.3)
                         )
-                        | (dataframe['close'] < dataframe['ema_20'] * 0.945)
+                        |
+                        (
+                            (dataframe['close'] < dataframe['ema_20'] * 0.945)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                        )
                         | (dataframe['close'] < dataframe['bb20_2_low'] * 0.975)
-                        | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.01))
+                        |
+                        (
+                            ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.01))
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                        )
                         | (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.999))
-                        | ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.01))
+                        |
+                        (
+                            ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.01))
+                            & (dataframe['ema_200_pct_change_144'] < 0.2)
+                        )
                         | (dataframe['rsi_14_15m'] < 30.0)
                         | (dataframe['cti_15m'] < -0.9)
                     )
@@ -14185,6 +14462,7 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['cti_1h'] < 0.8)
                             & (dataframe['volume_mean_12'] > (dataframe['volume_mean_24'] * 0.85))
+                            & (dataframe['close'] < (dataframe['res3_1d'] * 1.0))
                         )
                         | (dataframe['rsi_14_1h'] < 50.0)
                         | (dataframe['r_14_1h'] < -75.0)
@@ -14195,12 +14473,14 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['hl_pct_change_48_1h'] < 0.4)
                             & (dataframe['cti_1h'] < 0.96)
                             & (dataframe['volume_mean_12'] > (dataframe['volume_mean_24'] * 0.85))
+                            & (dataframe['close'] < (dataframe['res3_1d'] * 1.0))
                         )
                         |
                         (
                             (dataframe['close'] < (dataframe['res1_1d'] * 1.0))
                             & (dataframe['cti_1h'] < 0.9)
                             & (dataframe['hl_pct_change_48_1h'] < 0.6)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
                         )
                         | (dataframe['close'] < dataframe['ema_20'] * 0.94)
                         | (dataframe['close'] < dataframe['bb20_2_low'] * 0.98)
@@ -14425,6 +14705,7 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.985))
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.03)
+                            & (dataframe['crsi_1h'] > 4.0)
                         )
                         |
                         (
@@ -14631,6 +14912,7 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['sma_200'] > dataframe['sma_200'].shift(48))
                             & (dataframe['cti_1h'] < 0.7)
+                            & (dataframe['ema_200_pct_change_288'] < 0.16)
                         )
                         |
                         (
@@ -14674,11 +14956,13 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['rsi_14'] < 30.0)
                             & (dataframe['ema_200_pct_change_144'] < 0.16)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
                         )
                         |
                         (
                             (dataframe['r_14'] < -90.0)
                             & (dataframe['ema_200_pct_change_144'] < 0.16)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
                         )
                         |
                         (
@@ -14697,10 +14981,19 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['crsi_1h'] > 20.0)
                             & (dataframe['cti_1h'] < 0.8)
                             & (dataframe['close'] < (dataframe['res3_1d'] * 1.0))
+                            & (dataframe['hl_pct_change_36'] < 0.12)
                         )
-                        | (dataframe['hl_pct_change_48_1h'] < 0.3)
+                        |
+                        (
+                            (dataframe['hl_pct_change_48_1h'] < 0.3)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
                         | (dataframe['close'] < (dataframe['res1_1d'] * 1.0))
-                        | (dataframe['close'] < dataframe['ema_20'] * 0.95)
+                        |
+                        (
+                            (dataframe['close'] < dataframe['ema_20'] * 0.95)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
                         | (dataframe['close'] < dataframe['bb20_2_low'] * 0.999)
                     )
 
@@ -14774,9 +15067,20 @@ class NostalgiaForInfinityX(IStrategy):
                         | (dataframe['close'] < (dataframe['res1_1d'] * 1.0))
                     )
                     item_buy_logic.append(
-                        (dataframe['cmf'] > -0.1)
-                        | (dataframe['mfi'] > 30.0)
-                        | (dataframe['rsi_14'] < 25.0)
+                        (
+                            (dataframe['cmf'] > -0.1)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
+                        |
+                        (
+                            (dataframe['mfi'] > 30.0)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
+                        |
+                        (
+                            (dataframe['rsi_14'] < 25.0)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
                         |
                         (
                             (dataframe['ewo'] > 8.0)
@@ -14791,13 +15095,18 @@ class NostalgiaForInfinityX(IStrategy):
                         )
                         | (dataframe['tpct_change_144'] < 0.12)
                         | (dataframe['close_max_48'] < (dataframe['close'] * 1.1))
-                        | (dataframe['hl_pct_change_48_1h'] < 0.3)
+                        |
+                        (
+                            (dataframe['hl_pct_change_48_1h'] < 0.3)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
                         |
                         (
                             (dataframe['close'] < (dataframe['res3_1d'] * 1.0))
                             & (dataframe['btc_not_downtrend_1h'] == True)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.03)
                             & (dataframe['close_max_48'] < (dataframe['close'] * 1.16))
+                            & (dataframe['hl_pct_change_36'] < 0.12)
                         )
                         | (dataframe['close'] < dataframe['ema_20'] * 0.92)
                         | (dataframe['close'] < dataframe['bb20_2_low'] * 0.994)
@@ -15121,13 +15430,13 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['cmf'] > -0.3)
                             & (dataframe['volume_mean_12'] > (dataframe['volume_mean_24'] * 0.9))
-                            & (dataframe['ema_200_pct_change_288'] < 0.25)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
                         )
                         |
                         (
                             (dataframe['mfi'] > 30.0)
                             & (dataframe['volume_mean_12'] > (dataframe['volume_mean_24'] * 0.9))
-                            & (dataframe['ema_200_pct_change_288'] < 0.25)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
                         )
                         |
                         (
@@ -15143,6 +15452,7 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['ewo'] > 4.4)
                             & (dataframe['close'] < (dataframe['res3_1d'] * 1.0))
+                            & (dataframe['ema_200_pct_change_144'] < 0.12)
                         )
                         |
                         (
@@ -15167,6 +15477,7 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.012))
                             & (dataframe['ema_200_pct_change_144'] < 0.12)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
                         )
                         |
                         (
@@ -15247,7 +15558,11 @@ class NostalgiaForInfinityX(IStrategy):
                         )
                         | (dataframe['rsi_14'] < 15.0)
                         | (dataframe['cti'] < -0.9)
-                        | (dataframe['cmf_1h'] > 0.1)
+                        |
+                        (
+                            (dataframe['cmf_1h'] > 0.1)
+                            & (dataframe['btc_pct_close_max_24_5m'] < 1.03)
+                        )
                         |
                         (
                             (dataframe['cti_1h'] < 0.5)
@@ -15268,6 +15583,7 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.999))
                             & (dataframe['sma_200_dec_20'] == False)
+                            & (dataframe['btc_pct_close_max_24_5m'] < 1.03)
                         )
                         | ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.01))
                     )
@@ -15450,13 +15766,32 @@ class NostalgiaForInfinityX(IStrategy):
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.03)
                         )
                         | (dataframe['rsi_14'] < 16.0)
-                        | (dataframe['crsi'] > 16.0)
+                        |
+                        (
+                            (dataframe['crsi'] > 16.0)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
+                        )
                         | (dataframe['ewo'] > 4.4)
-                        | (dataframe['cti_1h'] < 0.75)
-                        | (dataframe['rsi_14_1h'] < 50.0)
-                        | (dataframe['r_14_1h'] < -75.0)
-                        | (dataframe['crsi_1h'] > 20.0)
-                        | (dataframe['crsi_1h'] > 10.0)
+                        |
+                        (
+                            (dataframe['cti_1h'] < 0.75)
+                            & (dataframe['btc_pct_close_max_72_5m'] < 1.04)
+                        )
+                        |
+                        (
+                            (dataframe['rsi_14_1h'] < 50.0)
+                            & (dataframe['btc_pct_close_max_72_5m'] < 1.04)
+                        )
+                        |
+                        (
+                            (dataframe['r_14_1h'] < -75.0)
+                            & (dataframe['btc_pct_close_max_72_5m'] < 1.04)
+                        )
+                        |
+                        (
+                            (dataframe['crsi_1h'] > 20.0)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
+                        )
                         | (dataframe['tpct_change_144'] < 0.12)
                         | (dataframe['close_max_48'] < (dataframe['close'] * 1.12))
                         | (dataframe['hl_pct_change_48_1h'] < 0.25)
@@ -15464,12 +15799,21 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['btc_pct_close_max_72_5m'] < 1.03)
                             & (dataframe['btc_not_downtrend_1h'] == True)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
                         )
                         | (dataframe['ema_200'] > (dataframe['ema_200'].shift(12) * 1.01))
-                        | (dataframe['close'] > (dataframe['sma_200_1h'] * 0.9))
+                        |
+                        (
+                            (dataframe['close'] > (dataframe['sma_200_1h'] * 0.9))
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
+                        )
                         | (dataframe['close'] < dataframe['sma_30'] * 0.9)
                         | (dataframe['close'] < dataframe['ema_20'] * 0.92)
-                        | (dataframe['close'] < dataframe['bb20_2_low'] * 0.99)
+                        |
+                        (
+                            (dataframe['close'] < dataframe['bb20_2_low'] * 0.99)
+                            & (dataframe['btc_pct_close_max_72_5m'] < 1.04)
+                        )
                         | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.028))
                         | (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.98))
                         | ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.01))
@@ -15577,6 +15921,7 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['rsi_14'] < 36.0)
                             & (dataframe['ema_200_pct_change_288'] > -0.18)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
                         )
                         |
                         (
@@ -15588,6 +15933,7 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['crsi_1h'] > 30.0)
                             & (dataframe['ema_200_pct_change_288'] > -0.2)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.9)
                         )
                         |
                         (
@@ -15839,22 +16185,26 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['tpct_change_144'] < 0.16)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.1)
                         )
                         |
                         (
                             (dataframe['close_max_48'] < (dataframe['close'] * 1.12))
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.1)
                         )
                         |
                         (
                             (dataframe['hl_pct_change_48_1h'] < 0.5)
                             & (dataframe['hl_pct_change_36'] < 0.3)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.1)
                         )
                         |
                         (
                             (dataframe['close'] < (dataframe['res1_1d'] * 1.0))
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.05)
+                            & (dataframe['hl_pct_change_36'] < 0.1)
                         )
                         |
                         (
@@ -15909,6 +16259,7 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['cmf'] > -0.2)
                             & (dataframe['ema_200_pct_change_288'] < 0.25)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.25)
                         )
                         | (dataframe['mfi'] > 50.0)
                         |
@@ -15916,12 +16267,14 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['cti_1h'] < 0.8)
                             & (dataframe['ema_200_pct_change_288'] < 0.25)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.25)
                         )
                         |
                         (
                             (dataframe['rsi_14_1h'] < 50.0)
                             & (dataframe['ema_200_pct_change_288'] < 0.25)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.25)
                         )
                         |
                         (
@@ -16086,15 +16439,30 @@ class NostalgiaForInfinityX(IStrategy):
                         | (dataframe['close'] < (dataframe['bb20_2_low'] * 0.975))
                     )
                     item_buy_logic.append(
-                        (dataframe['cmf'] > -0.3)
+                        (
+                            (dataframe['cmf'] > -0.3)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                        )
                         | (dataframe['r_480'] > -30.0)
                         | (dataframe['crsi'] > 20.0)
-                        | (dataframe['cti_1h'] < 0.8)
+                        |
+                        (
+                            (dataframe['cti_1h'] < 0.8)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                        )
                         | (dataframe['rsi_14_1h'] < 50.0)
                         | (dataframe['r_14_1h'] < -75.0)
                         | (dataframe['crsi_1h'] > 30.0)
-                        | (dataframe['tpct_change_144'] < 0.2)
-                        | (dataframe['close_max_48'] < (dataframe['close'] * 1.2))
+                        |
+                        (
+                            (dataframe['tpct_change_144'] < 0.2)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                        )
+                        |
+                        (
+                            (dataframe['close_max_48'] < (dataframe['close'] * 1.2))
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                        )
                         | (dataframe['hl_pct_change_48_1h'] < 0.25)
                         |
                         (
@@ -16453,7 +16821,11 @@ class NostalgiaForInfinityX(IStrategy):
                     )
                     item_buy_logic.append(
                         (dataframe['cmf'] > 0.0)
-                        | (dataframe['mfi'] > 36.0)
+                        |
+                        (
+                            (dataframe['mfi'] > 36.0)
+                            & (dataframe['ema_200_pct_change_144'] < 0.25)
+                        )
                         |
                         (
                             (dataframe['rsi_14'] < 30.0)
@@ -16462,7 +16834,8 @@ class NostalgiaForInfinityX(IStrategy):
                         |
                         (
                             (dataframe['cti'] < -0.8)
-                            & (dataframe['ema_200_pct_change_144'] < 0.25)
+                            & (dataframe['ema_200_pct_change_144'] < 0.16)
+                            & (dataframe['hl_pct_change_36'] < 0.24)
                         )
                         | (dataframe['cti_1h'] < 0.5)
                         | (dataframe['rsi_14_1h'] < 50.0)
@@ -16471,6 +16844,8 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['crsi_1h'] > 20.0)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.02)
+                            & (dataframe['ema_200_pct_change_144'] < 0.16)
+                            & (dataframe['hl_pct_change_36'] < 0.24)
                         )
                         | (dataframe['tpct_change_144'] < 0.12)
                         | (dataframe['close_max_48'] < (dataframe['close'] * 1.12))
@@ -16478,7 +16853,11 @@ class NostalgiaForInfinityX(IStrategy):
                         | (dataframe['close'] < (dataframe['res1_1d'] * 1.0))
                         | (dataframe['close'] < dataframe['ema_20'] * 0.94)
                         | (dataframe['close'] < dataframe['bb20_2_low'] * 0.999)
-                        | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.024))
+                        |
+                        (
+                            ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.024))
+                            & (dataframe['ema_200_pct_change_144'] < 0.25)
+                        )
                         |
                         (
                             (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.999))
@@ -16873,25 +17252,75 @@ class NostalgiaForInfinityX(IStrategy):
                         | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.034))
                     )
                     item_buy_logic.append(
-                        (dataframe['cmf'] > -0.2)
-                        | (dataframe['rsi_14'] < 30.0)
-                        | (dataframe['cti'] < -0.9)
-                        | (dataframe['cti_1h'] < -0.8)
+                        (
+                            (dataframe['cmf'] > -0.2)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.75)
+                        )
+                        |
+                        (
+                            (dataframe['rsi_14'] < 30.0)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.75)
+                            & (dataframe['cmf'] > -0.5)
+                        )
+                        |
+                        (
+                            (dataframe['cti'] < -0.9)
+                            & (dataframe['cmf'] > -0.5)
+                        )
+                        |
+                        (
+                            (dataframe['cti_1h'] < -0.8)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.75)
+                        )
                         | (dataframe['rsi_14_1h'] < 30.0)
-                        | (dataframe['r_14_1h'] < -90.0)
-                        | (dataframe['crsi_1h'] > 20.0)
+                        |
+                        (
+                            (dataframe['r_14_1h'] < -90.0)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.75)
+                            & (dataframe['cmf'] > -0.5)
+                        )
+                        |
+                        (
+                            (dataframe['crsi_1h'] > 20.0)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.75)
+                        )
                         | (dataframe['tpct_change_144'] < 0.16)
-                        | (dataframe['close_max_48'] < (dataframe['close'] * 1.12))
-                        | (dataframe['hl_pct_change_36'] < 0.12)
+                        |
+                        (
+                            (dataframe['close_max_48'] < (dataframe['close'] * 1.12))
+                            & (dataframe['cmf'] > -0.5)
+                        )
+                        |
+                        (
+                            (dataframe['hl_pct_change_36'] < 0.12)
+                            & (dataframe['cmf'] > -0.5)
+                        )
                         | (dataframe['hl_pct_change_48_1h'] < 0.3)
-                        | (dataframe['close'] > (dataframe['sup1_1d'] * 1.0))
+                        |
+                        (
+                            (dataframe['close'] > (dataframe['sup1_1d'] * 1.0))
+                            & (dataframe['hl_pct_change_48_1h'] < 0.75)
+                            & (dataframe['cmf'] > -0.5)
+                        )
                         | (dataframe['close'] > (dataframe['sma_200'] * 0.99))
                         | (dataframe['close'] < dataframe['sma_30'] * 0.93)
                         | (dataframe['close'] < dataframe['ema_20'] * 0.95)
-                        | (dataframe['close'] < dataframe['bb20_2_low'] * 0.999)
+                        |
+                        (
+                            (dataframe['close'] < dataframe['bb20_2_low'] * 0.999)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.75)
+                        )
                         | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.028))
-                        | (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.99))
-                        | ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.03))
+                        |
+                        (
+                            (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.99))
+                            & (dataframe['hl_pct_change_48_1h'] < 0.75)
+                        )
+                        |
+                        (
+                            ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.03))
+                            & (dataframe['cmf'] > -0.5)
+                        )
                     )
 
                 # Condition #42 - 15m. Semi swing. Local dip. 15m uptrend.
@@ -16992,21 +17421,25 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['crsi'] > 20.0)
                             & (dataframe['ema_200_pct_change_288'] < 0.12)
+                            & (dataframe['cmf'] > -0.4)
                         )
                         |
                         (
                             (dataframe['cti_1h'] < 0.5)
                             & (dataframe['ema_200_pct_change_288'] < 0.1)
+                            & (dataframe['cmf'] > -0.4)
                         )
                         |
                         (
                             (dataframe['rsi_14_1h'] < 50.0)
                             & (dataframe['ema_200_pct_change_288'] < 0.1)
+                            & (dataframe['cmf'] > -0.4)
                         )
                         |
                         (
                             (dataframe['r_14_1h'] < -90.0)
                             & (dataframe['ema_200_pct_change_288'] < 0.1)
+                            & (dataframe['cmf'] > -0.4)
                         )
                         | (dataframe['tpct_change_144'] < 0.06)
                         | (dataframe['close_max_48'] < (dataframe['close'] * 1.04))
@@ -17019,7 +17452,11 @@ class NostalgiaForInfinityX(IStrategy):
                         )
                         | (dataframe['close'] < dataframe['sma_30'] * 0.95)
                         | (dataframe['close'] < dataframe['ema_20'] * 0.97)
-                        | (dataframe['close'] < dataframe['bb20_2_low'] * 0.99)
+                        |
+                        (
+                            (dataframe['close'] < dataframe['bb20_2_low'] * 0.99)
+                            & (dataframe['ema_200_pct_change_288'] < 0.16)
+                        )
                         | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.02))
                         | (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.99))
                         |
@@ -17031,6 +17468,7 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['rsi_14_15m'] < 30.0)
                             & (dataframe['ema_200_pct_change_288'] < 0.12)
+                            & (dataframe['cmf'] > -0.4)
                         )
                         |
                         (
@@ -17161,6 +17599,8 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['rsi_14'] < 30.0)
                             & (dataframe['ema_200_pct_change_288'] < 0.16)
+                            & (dataframe['btc_pct_close_max_24_5m'] < 1.05)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                         |
                         (
@@ -17177,18 +17617,30 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['r_14_1h'] < -90.0)
                             & (dataframe['crsi_1h'] > 2.0)
                             & (dataframe['ema_200_pct_change_288'] < 0.16)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
-                        | (dataframe['crsi_1h'] > 30.0)
+                        |
+                        (
+                            (dataframe['crsi_1h'] > 30.0)
+                            & (dataframe['btc_pct_close_max_24_5m'] < 1.05)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                        )
                         |
                         (
                             (dataframe['tpct_change_144'] < 0.2)
                             & (dataframe['crsi_1h'] > 4.0)
+                            & (dataframe['btc_pct_close_max_24_5m'] < 1.05)
                         )
-                        | (dataframe['close_max_48'] < (dataframe['close'] * 1.12))
+                        |
+                        (
+                            (dataframe['close_max_48'] < (dataframe['close'] * 1.12))
+                            & (dataframe['btc_pct_close_max_24_5m'] < 1.05)
+                        )
                         |
                         (
                             (dataframe['hl_pct_change_48_1h'] < 0.5)
                             & (dataframe['crsi_1h'] > 4.0)
+                            & (dataframe['btc_pct_close_max_24_5m'] < 1.05)
                         )
                         |
                         (
@@ -17201,27 +17653,49 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['close'] > (dataframe['sup1_1d'] * 1.0))
                             & (dataframe['ema_200_pct_change_288'] < 0.16)
                         )
-                        | (dataframe['close'] < dataframe['sma_30'] * 0.95)
-                        | (dataframe['close'] < dataframe['ema_20'] * 0.95)
+                        |
+                        (
+                            (dataframe['close'] < dataframe['sma_30'] * 0.95)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                        )
+                        |
+                        (
+                            (dataframe['close'] < dataframe['ema_20'] * 0.95)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                        )
                         |
                         (
                             (dataframe['close'] < dataframe['bb20_2_low'] * 0.999)
                             & (dataframe['crsi_1h'] > 4.0)
                             & (dataframe['ema_200_pct_change_288'] < 0.16)
+                            & (dataframe['btc_pct_close_max_24_5m'] < 1.05)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
-                        | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.02))
-                        | (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.99))
+                        |
+                        (
+                            ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.02))
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                        )
+                        |
+                        (
+                            (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.99))
+                            & (dataframe['btc_pct_close_max_24_5m'] < 1.05)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                        )
                         | ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.04))
                         |
                         (
                             (dataframe['rsi_14_15m'] < 30.0)
                             & (dataframe['crsi_1h'] > 4.0)
                             & (dataframe['ema_200_pct_change_288'] < 0.16)
+                            & (dataframe['btc_pct_close_max_24_5m'] < 1.05)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                         |
                         (
                             (dataframe['cti_15m'] < -0.9)
                             & (dataframe['ema_200_pct_change_288'] < 0.16)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                     )
 
@@ -17251,8 +17725,16 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['btc_not_downtrend_1h'] == True)
                             & (dataframe['ema_200_pct_change_288'] < 0.12)
                         )
-                        | (dataframe['cmf'] > 0.0)
-                        | (dataframe['cti_1h'] < 0.8)
+                        |
+                        (
+                            (dataframe['cmf'] > 0.0)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
+                        )
+                        |
+                        (
+                            (dataframe['cti_1h'] < 0.8)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
+                        )
                         | (dataframe['r_480_1h'] < -30.0)
                         |
                         (
@@ -17462,10 +17944,17 @@ class NostalgiaForInfinityX(IStrategy):
                         | (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.985))
                     )
                     item_buy_logic.append(
-                        (dataframe['cmf'] > -0.2)
+                        (
+                            (dataframe['cmf'] > -0.2)
+                            & (dataframe['ema_200_pct_change_288'] < 0.16)
+                        )
                         | (dataframe['mfi'] > 30.0)
                         | (dataframe['rsi_14'] < 8.0)
-                        | (dataframe['cti_1h'] < 0.5)
+                        |
+                        (
+                            (dataframe['cti_1h'] < 0.5)
+                            & (dataframe['ema_200_pct_change_288'] < 0.16)
+                        )
                         | (dataframe['tpct_change_144'] < 0.2)
                         | (dataframe['hl_pct_change_48_1h'] < 0.25)
                         | (dataframe['close'] < dataframe['ema_20'] * 0.9)
@@ -17505,9 +17994,16 @@ class NostalgiaForInfinityX(IStrategy):
                         | (dataframe['close_15m'] < (dataframe['sma_15_15m'] * 0.94))
                     )
                     item_buy_logic.append(
-                        (dataframe['btc_not_downtrend_1h'] == True)
+                        (
+                            (dataframe['btc_not_downtrend_1h'] == True)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
+                        )
                         | (dataframe['cti_1h'] < 0.0)
-                        | (dataframe['crsi_1h'] > 20.0)
+                        |
+                        (
+                            (dataframe['crsi_1h'] > 20.0)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
+                        )
                         | (dataframe['tpct_change_144'] < 0.12)
                         | (dataframe['hl_pct_change_48_1h'] < 0.25)
                         | (dataframe['close'] < dataframe['ema_13'] * 0.96)
@@ -17593,12 +18089,15 @@ class NostalgiaForInfinityX(IStrategy):
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.03)
                             & (dataframe['ema_200_pct_change_288'] < 0.18)
                             & (dataframe['hl_pct_change_48_1h'] < 0.6)
+                            & (dataframe['rsi_14'] < 40.0)
                         )
                         | (dataframe['rsi_14'] < 20.0)
                         |
                         (
                             (dataframe['cti'] < -0.9)
                             & (dataframe['close_max_48'] < (dataframe['close'] * 1.16))
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                            & (dataframe['btc_pct_close_max_72_5m'] < 1.03)
                         )
                         | (dataframe['cti_1h'] < -0.9)
                         | (dataframe['rsi_14_1h'] < 30.0)
@@ -17613,6 +18112,8 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['crsi_1h'] > 30.0)
                             & (dataframe['close_max_48'] < (dataframe['close'] * 1.16))
                             & (dataframe['hl_pct_change_48_1h'] < 0.6)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                            & (dataframe['rsi_14'] < 40.0)
                         )
                         | (dataframe['tpct_change_144'] < 0.08)
                         |
@@ -17620,13 +18121,18 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['close_max_48'] < (dataframe['close'] * 1.06))
                             & (dataframe['hl_pct_change_48_1h'] < 0.75)
                         )
-                        | (dataframe['hl_pct_change_48_1h'] < 0.36)
+                        |
+                        (
+                            (dataframe['hl_pct_change_48_1h'] < 0.36)
+                            & (dataframe['rsi_14'] < 40.0)
+                        )
                         | (dataframe['ema_200'] > (dataframe['ema_200'].shift(12) * 1.01))
                         | (dataframe['close'] > (dataframe['sma_200'] * 0.99))
                         |
                         (
                             (dataframe['close'] < dataframe['sma_30'] * 0.95)
                             & (dataframe['ema_200_pct_change_288'] < 0.16)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
                         )
                         | (dataframe['close'] < dataframe['ema_20'] * 0.95)
                         | (dataframe['close'] < dataframe['bb20_2_low'] * 0.999)
@@ -17878,16 +18384,25 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['cti_1h'] < -0.8)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.05)
                         )
-                        | (dataframe['rsi_14_1h'] < 20.0)
                         | (dataframe['tpct_change_144'] < 0.08)
-                        | (dataframe['close_max_48'] < (dataframe['close'] * 1.08))
+                        |
+                        (
+                            (dataframe['close_max_48'] < (dataframe['close'] * 1.08))
+                            & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                        )
                         |
                         (
                             (dataframe['btc_pct_close_max_72_5m'] < 1.03)
                             & (dataframe['btc_not_downtrend_1h'] == True)
+                            & (dataframe['cmf'] > -0.4)
+                            & (dataframe['ema_200_pct_change_144'] > -0.1)
                         )
                         | (dataframe['ema_200'] > (dataframe['ema_200'].shift(12) * 1.01))
-                        | (dataframe['sma_200'] > dataframe['sma_200'].shift(48))
+                        |
+                        (
+                            (dataframe['sma_200'] > dataframe['sma_200'].shift(48))
+                            & (dataframe['close_max_48'] < (dataframe['close'] * 1.12))
+                        )
                         | (dataframe['close'] > (dataframe['sma_200'] * 0.95))
                         | (dataframe['close'] < dataframe['sma_30'] * 0.94)
                         | (dataframe['close'] < dataframe['ema_20'] * 0.95)
@@ -17897,8 +18412,17 @@ class NostalgiaForInfinityX(IStrategy):
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.05)
                         )
                         | (dataframe['close'] < dataframe['bb20_2_low'] * 0.97)
-                        | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.02))
-                        | (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.98))
+                        |
+                        (
+                            ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.02))
+                            & (dataframe['cmf'] > -0.4)
+                            & (dataframe['ema_200_pct_change_144'] > -0.1)
+                        )
+                        |
+                        (
+                            (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.98))
+                            & (dataframe['ema_200_pct_change_144'] > -0.1)
+                        )
                         | ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.04))
                     )
                     item_buy_logic.append(
@@ -18143,36 +18667,53 @@ class NostalgiaForInfinityX(IStrategy):
                         | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.028))
                     )
                     item_buy_logic.append(
-                        (dataframe['cmf'] > 0.1)
-                        | (dataframe['rsi_14'] < 30.0)
+                        (
+                            (dataframe['cmf'] > 0.1)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
+                        )
+                        |
+                        (
+                            (dataframe['rsi_14'] < 30.0)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
+                        )
                         | (dataframe['cti'] < -0.95)
                         | (dataframe['cti_1h'] < -0.9)
                         | (dataframe['rsi_14_1h'] < 20.0)
                         |
                         (
                             (dataframe['crsi_1h'] > 40.0)
-                            & (dataframe['hl_pct_change_48_1h'] < 0.6)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
                         )
                         | (dataframe['tpct_change_144'] < 0.1)
-                        | (dataframe['close_max_48'] < (dataframe['close'] * 1.08))
+                        |
+                        (
+                            (dataframe['close_max_48'] < (dataframe['close'] * 1.08))
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
+                        )
                         | (dataframe['hl_pct_change_48_1h'] < 0.16)
                         |
                         (
                             (dataframe['btc_pct_close_max_72_5m'] < 1.01)
                             & (dataframe['close'] > (dataframe['sup1_1d'] * 1.0))
                             & (dataframe['tpct_change_144'] < 0.26)
-                            & (dataframe['hl_pct_change_48_1h'] < 0.6)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
                         )
                         | (dataframe['ema_200'] > (dataframe['ema_200'].shift(12) * 1.01))
                         | (dataframe['close'] > (dataframe['sma_200'] * 0.99))
                         | (dataframe['close'] < dataframe['sma_30'] * 0.9)
                         | (dataframe['close'] < dataframe['ema_20'] * 0.91)
-                        | (dataframe['close'] > (dataframe['sup_level_1h'] * 0.96))
+                        |
+                        (
+                            (dataframe['close'] > (dataframe['sup_level_1h'] * 0.96))
+                            & (dataframe['hl_pct_change_36'] < 0.1)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
+                        )
                         | (dataframe['close'] < dataframe['bb20_2_low'] * 0.975)
                         |
                         (
                             ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.034))
                             & (dataframe['ema_200_pct_change_288'] < 0.12)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
                         )
                         | (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.95))
                         | ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.05))
@@ -18251,9 +18792,17 @@ class NostalgiaForInfinityX(IStrategy):
                     )
                     item_buy_logic.append(
                         (dataframe['cmf'] > -0.1)
-                        | (dataframe['rsi_14'] < 20.0)
+                        |
+                        (
+                            (dataframe['rsi_14'] < 20.0)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
                         | (dataframe['cti'] < -0.95)
-                        | (dataframe['cti_1h'] < -0.8)
+                        |
+                        (
+                            (dataframe['cti_1h'] < -0.8)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
                         | (dataframe['rsi_14_1h'] < 30.0)
                         | (dataframe['crsi_1h'] > 50.0)
                         | (dataframe['tpct_change_144'] < 0.12)
@@ -18263,6 +18812,7 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['btc_pct_close_max_72_5m'] < 1.01)
                             & (dataframe['crsi_1h'] > 20.0)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
                         )
                         | (dataframe['ema_200'] > (dataframe['ema_200'].shift(12) * 1.01))
                         | (dataframe['close'] > (dataframe['sma_200'] * 0.99))
@@ -18270,13 +18820,18 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['close'] < dataframe['sma_30'] * 0.94)
                             & (dataframe['crsi_1h'] > 10.0)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
                         )
                         |
                         (
                             (dataframe['close'] < dataframe['ema_20'] * 0.95)
                             & (dataframe['crsi_1h'] > 10.0)
                         )
-                        | (dataframe['close'] > (dataframe['sup_level_1h'] * 0.95))
+                        |
+                        (
+                            (dataframe['close'] > (dataframe['sup_level_1h'] * 0.95))
+                            & (dataframe['tpct_change_144'] < 0.16)
+                        )
                         |
                         (
                             (dataframe['close'] < dataframe['bb20_2_low'] * 0.999)
@@ -18287,6 +18842,7 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.97))
                             & (dataframe['crsi_1h'] > 10.0)
+                            & (dataframe['tpct_change_144'] < 0.16)
                         )
                         | ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.03))
                         | (dataframe['rsi_14_15m'] < 20.0)
@@ -18314,8 +18870,13 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['tpct_change_144'] < 0.12)
                             & (dataframe['cmf_1h'] > -0.25)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.6)
                         )
-                        | (dataframe['hl_pct_change_48_1h'] < 0.5)
+                        |
+                        (
+                            (dataframe['hl_pct_change_48_1h'] < 0.5)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
                         |
                         (
                             (dataframe['sma_200'] > dataframe['sma_200'].shift(48))
@@ -18331,7 +18892,12 @@ class NostalgiaForInfinityX(IStrategy):
                             & (dataframe['cmf_1h'] > -0.25)
                         )
                         | (dataframe['close'] < dataframe['ema_20'] * 0.95)
-                        | (dataframe['close'] < dataframe['bb20_2_low'] * 0.99)
+                        |
+                        (
+                            (dataframe['close'] < dataframe['bb20_2_low'] * 0.99)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.6)
+                        )
                         | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.028))
                         | (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.96))
                         | ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.03))
@@ -18466,46 +19032,66 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['cmf'] > -0.2)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['rsi_14'] < 40.0)
                         )
-                        | (dataframe['mfi'] > 36.0)
+                        |
+                        (
+                            (dataframe['mfi'] > 36.0)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
+                        )
                         | (dataframe['rsi_14'] < 22.0)
                         | (dataframe['cti_1h'] < -0.5)
-                        | (dataframe['rsi_14_1h'] < 40.0)
-                        | (dataframe['crsi_1h'] > 25.0)
+                        |
+                        (
+                            (dataframe['rsi_14_1h'] < 40.0)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                        )
+                        |
+                        (
+                            (dataframe['crsi_1h'] > 25.0)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
+                        )
                         |
                         (
                             (dataframe['tpct_change_144'] < 0.16)
-                            & (dataframe['hl_pct_change_48_1h'] < 0.6)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
                         )
                         |
                         (
                             (dataframe['close_max_48'] < (dataframe['close'] * 1.1))
-                            & (dataframe['hl_pct_change_48_1h'] < 0.6)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
                         )
                         | (dataframe['hl_pct_change_48_1h'] < 0.4)
                         |
                         (
                             (dataframe['btc_pct_close_max_72_5m'] < 1.03)
                             & (dataframe['btc_not_downtrend_1h'] == True)
+                            & (dataframe['rsi_14'] < 30.0)
                         )
                         | (dataframe['ema_200'] > (dataframe['ema_200'].shift(12) * 1.01))
-                        | (dataframe['close'] > (dataframe['sma_200'] * 0.99))
+                        |
+                        (
+                            (dataframe['close'] > (dataframe['sma_200'] * 0.99))
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
+                        )
                         |
                         (
                             (dataframe['close'] < dataframe['sma_30'] * 0.94)
-                            & (dataframe['hl_pct_change_48_1h'] < 0.6)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
                         )
                         |
                         (
                             (dataframe['close'] < dataframe['ema_20'] * 0.95)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
                         )
                         | (dataframe['close'] < dataframe['bb20_2_low'] * 0.99)
                         |
                         (
                             ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.024))
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
                         )
                         | (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.98))
                         |
@@ -18597,14 +19183,23 @@ class NostalgiaForInfinityX(IStrategy):
                             & (dataframe['close'] < (dataframe['res3_1d'] * 1.1))
                         )
                         | (dataframe['mfi'] > 50.0)
-                        | (dataframe['rsi_14'] < 30.0)
+                        |
+                        (
+                            (dataframe['rsi_14'] < 30.0)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
+                        )
                         |
                         (
                             (dataframe['cti'] < -0.8)
                             & (dataframe['ema_200_pct_change_144'] < 0.05)
                             & (dataframe['rsi_14'] < 36.0)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
                         )
-                        | (dataframe['cti_1h'] < -0.5)
+                        |
+                        (
+                            (dataframe['cti_1h'] < -0.5)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
+                        )
                         | (dataframe['rsi_14_1h'] < 40.0)
                         |
                         (
@@ -18622,6 +19217,7 @@ class NostalgiaForInfinityX(IStrategy):
                             & (dataframe['close'] < (dataframe['res3_1d'] * 1.1))
                             & (dataframe['ema_200_pct_change_144'] < 0.05)
                             & (dataframe['rsi_14'] < 36.0)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
                         )
                         |
                         (
@@ -18636,8 +19232,16 @@ class NostalgiaForInfinityX(IStrategy):
                         )
                         | (dataframe['close'] < dataframe['ema_20'] * 0.96)
                         | (dataframe['close'] < dataframe['bb20_2_low'] * 0.999)
-                        | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.024))
-                        | (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.99))
+                        |
+                        (
+                            ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.024))
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
+                        )
+                        |
+                        (
+                            (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.99))
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
+                        )
                         | ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.04))
                         | (dataframe['rsi_14_15m'] < 20.0)
                         |
@@ -18784,6 +19388,7 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['cti_1h'] < -0.0)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
                         )
                         | (dataframe['rsi_14_1h'] < 20.0)
                         |
@@ -18892,6 +19497,8 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['cmf'] > -0.2)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['tpct_change_2'] < 0.06)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                         | (dataframe['mfi'] > 50.0)
                         |
@@ -18899,45 +19506,58 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['cti_1h'] < 0.8)
                             & (dataframe['hl_pct_change_36'] < 0.2)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['tpct_change_2'] < 0.06)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                         |
                         (
                             (dataframe['rsi_14_1h'] < 50.0)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
                         )
                         |
                         (
                             (dataframe['r_14_1h'] < -90.0)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
                         )
                         |
                         (
                             (dataframe['tpct_change_144'] < 0.16)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['tpct_change_2'] < 0.06)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                         |
                         (
                             (dataframe['close_max_48'] < (dataframe['close'] * 1.16))
                             & (dataframe['hl_pct_change_36'] < 0.25)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['tpct_change_2'] < 0.06)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                         |
                         (
                             (dataframe['hl_pct_change_48_1h'] < 0.5)
                             & (dataframe['hl_pct_change_36'] < 0.2)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['tpct_change_2'] < 0.06)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                         |
                         (
                             (dataframe['close'] < (dataframe['res3_1d'] * 1.0))
                             & (dataframe['hl_pct_change_36'] < 0.2)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['tpct_change_2'] < 0.06)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                         | (dataframe['close'] < dataframe['ema_20'] * 0.9)
                         |
                         (
                             (dataframe['close'] < dataframe['bb20_2_low'] * 0.97)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['tpct_change_2'] < 0.06)
                         )
                         | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.044))
                     )
@@ -19359,6 +19979,8 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['cti'] < -0.9)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
                         )
                         | (dataframe['cti_1h'] < -0.8)
                         |
@@ -19368,12 +19990,17 @@ class NostalgiaForInfinityX(IStrategy):
                         )
                         | (dataframe['tpct_change_144'] < 0.1)
                         | (dataframe['close_max_48'] < (dataframe['close'] * 1.08))
-                        | (dataframe['ema_200'] > (dataframe['ema_200'].shift(12) * 1.01))
+                        |
+                        (
+                            (dataframe['ema_200'] > (dataframe['ema_200'].shift(12) * 1.01))
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
+                        )
                         |
                         (
                             (dataframe['close'] > (dataframe['sma_200'] * 0.99))
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.05)
                             & (dataframe['cmf'] > -0.5)
+                            & (dataframe['ema_200_pct_change_288'] < 0.12)
                         )
                         | (dataframe['close'] < dataframe['ema_20'] * 0.92)
                         |
@@ -19386,14 +20013,23 @@ class NostalgiaForInfinityX(IStrategy):
                             ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.024))
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
                         )
-                        | (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.96))
+                        |
+                        (
+                            (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.96))
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
                         |
                         (
                             ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.01))
                             & (dataframe['ema_200_pct_change_144'] < 0.12)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
                         )
                         | (dataframe['rsi_14_15m'] < 20.0)
-                        | (dataframe['cti_15m'] < -0.9)
+                        |
+                        (
+                            (dataframe['cti_15m'] < -0.9)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                        )
                     )
                     item_buy_logic.append(dataframe['volume'] < (dataframe['volume_mean_12'] * 1.4))
                     item_buy_logic.append(dataframe['volume_mean_12'] > (dataframe['volume_mean_24'] * 0.8))
@@ -19469,12 +20105,17 @@ class NostalgiaForInfinityX(IStrategy):
                             & (dataframe['ema_200_pct_change_288'] > -0.2)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
                         )
-                        | (dataframe['rsi_14'] < 20.0)
+                        |
+                        (
+                            (dataframe['rsi_14'] < 20.0)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                        )
                         | (dataframe['cti_1h'] < -0.9)
                         |
                         (
                             (dataframe['crsi_1h'] > 16.0)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['ema_200_pct_change_288'] > -0.12)
                         )
                         |
                         (
@@ -19487,6 +20128,7 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['hl_pct_change_48_1h'] < 0.4)
                             & (dataframe['volume_mean_12'] > (dataframe['volume_mean_24'] * 0.5))
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                         | (dataframe['close_max_48'] < (dataframe['close'] * 1.08))
                         |
@@ -19494,18 +20136,20 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['btc_pct_close_max_72_5m'] < 1.03)
                             & (dataframe['close'] > (dataframe['sma_200_1h'] * 0.7))
                             & (dataframe['volume_mean_12'] > (dataframe['volume_mean_24'] * 0.5))
+                            & (dataframe['ema_200_pct_change_288'] > -0.12)
                         )
                         | (dataframe['ema_200'] > (dataframe['ema_200'].shift(12) * 1.01))
                         | (dataframe['close'] > (dataframe['sma_200'] * 0.95))
                         |
                         (
                             (dataframe['close'] > (dataframe['sup3_1d'] * 1.0))
-                            & (dataframe['ema_200_pct_change_288'] > -0.2)
+                            & (dataframe['ema_200_pct_change_288'] > -0.12)
                         )
                         |
                         (
                             (dataframe['close'] < dataframe['ema_20'] * 0.95)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                         | (dataframe['close'] < dataframe['bb20_2_low'] * 0.995)
                     )
@@ -19562,10 +20206,17 @@ class NostalgiaForInfinityX(IStrategy):
                         | (dataframe['close'] < dataframe['bb20_2_low'] * 0.98)
                     )
                     item_buy_logic.append(
-                        (dataframe['cmf'] > -0.1)
+                        (
+                            (dataframe['cmf'] > -0.1)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.6)
+                        )
                         | (dataframe['mfi'] > 20.0)
                         | (dataframe['rsi_14'] < 12.0)
-                        | (dataframe['cti'] < -0.9)
+                        |
+                        (
+                            (dataframe['cti'] < -0.9)
+                            & (dataframe['ema_200_pct_change_288'] < 0.26)
+                        )
                         | (dataframe['cti_1h'] < -0.95)
                         | (dataframe['rsi_14_1h'] < 30.0)
                         |
@@ -20056,6 +20707,7 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['cmf'] > -0.2)
                             & (dataframe['rsi_14'] < 36.0)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['ema_200_pct_change_288'] < 0.16)
                         )
                         |
                         (
@@ -20063,6 +20715,7 @@ class NostalgiaForInfinityX(IStrategy):
                             & (dataframe['ema_200_pct_change_144'] < 0.12)
                             & (dataframe['hl_pct_change_36'] < 0.24)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['rsi_14'] < 33.0)
                         )
                         | (dataframe['rsi_14'] < 15.0)
                         |
@@ -20070,6 +20723,7 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['cti'] < -0.9)
                             & (dataframe['tpct_change_144'] < 0.26)
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
+                            & (dataframe['ema_200_pct_change_288'] < 0.16)
                         )
                         | (dataframe['r_480'] > -50.0)
                         |
@@ -20080,7 +20734,11 @@ class NostalgiaForInfinityX(IStrategy):
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.06)
                         )
                         | (dataframe['cti_1h'] < -0.9)
-                        | (dataframe['rsi_14_1h'] < 30.0)
+                        |
+                        (
+                            (dataframe['rsi_14_1h'] < 33.0)
+                            & (dataframe['hl_pct_change_36'] < 0.3)
+                        )
                         |
                         (
                             (dataframe['r_14_1h'] < -95.0)
@@ -20090,6 +20748,7 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['tpct_change_144'] < 0.16)
                             & (dataframe['rsi_14'] < 36.0)
+                            & (dataframe['ema_200_pct_change_288'] < 0.16)
                         )
                         | (dataframe['close_max_48'] < (dataframe['close'] * 1.12))
                         | (dataframe['hl_pct_change_48_1h'] < 0.25)
@@ -20233,10 +20892,18 @@ class NostalgiaForInfinityX(IStrategy):
                         |
                         (
                             (dataframe['mfi'] > 25.0)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                        )
+                        |
+                        (
+                            (dataframe['rsi_14'] < 20.0)
                             & (dataframe['hl_pct_change_36'] < 0.2)
                         )
-                        | (dataframe['rsi_14'] < 20.0)
-                        | (dataframe['cti'] < -0.9)
+                        |
+                        (
+                            (dataframe['cti'] < -0.9)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                        )
                         |
                         (
                             (dataframe['cti_1h'] < -0.0)
@@ -20245,19 +20912,23 @@ class NostalgiaForInfinityX(IStrategy):
                         |
                         (
                             (dataframe['rsi_14_1h'] < 40.0)
-                            & (dataframe['hl_pct_change_36'] < 0.2)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                         |
                         (
                             (dataframe['crsi_1h'] > 20.0)
                             & (dataframe['close'] < (dataframe['res1_1d'] * 1.0))
                         )
-                        | (dataframe['tpct_change_144'] < 0.2)
+                        |
+                        (
+                            (dataframe['tpct_change_144'] < 0.2)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                        )
                         | (dataframe['close_max_48'] < (dataframe['close'] * 1.12))
                         |
                         (
                             (dataframe['hl_pct_change_48_1h'] < 0.5)
-                            & (dataframe['hl_pct_change_36'] < 0.2)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                         | (dataframe['ema_200'] > (dataframe['ema_200'].shift(12) * 1.01))
                         | (dataframe['close'] > (dataframe['sma_200'] * 0.95))
@@ -20266,18 +20937,27 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['close'] < dataframe['ema_20'] * 0.91)
                             & (dataframe['hl_pct_change_36'] < 0.2)
                         )
-                        | (dataframe['close'] < dataframe['bb20_2_low'] * 0.97)
+                        |
+                        (
+                            (dataframe['close'] < dataframe['bb20_2_low'] * 0.97)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                            & (dataframe['crsi_1h'] > 4.0)
+                        )
                         |
                         (
                             ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.028))
-                            & (dataframe['hl_pct_change_36'] < 0.2)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                         |
                         (
                             (dataframe['rsi_14_15m'] < 30.0)
-                            & (dataframe['hl_pct_change_36'] < 0.2)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
-                        | (dataframe['cti_15m'] < -0.9)
+                        |
+                        (
+                            (dataframe['cti_15m'] < -0.9)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                        )
                     )
                     item_buy_logic.append(
                         (dataframe['cmf'] > -0.1)
@@ -20357,6 +21037,8 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['btc_not_downtrend_1h'] == True)
                             & (dataframe['cmf'] > -0.1)
                             & (dataframe['mfi'] > 10.0)
+                            & (dataframe['ema_200_pct_change_144'] < 0.22)
+                            & (dataframe['ema_200_pct_change_288'] < 0.16)
                         )
                         |
                         (
@@ -20377,6 +21059,7 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['close'] < dataframe['sma_30'] * 0.93)
                             & (dataframe['cmf'] > 0.0)
                             & (dataframe['ema_200_pct_change_288'] < 0.12)
+                            & (dataframe['hl_pct_change_36'] < 0.3)
                         )
                         |
                         (
@@ -20791,7 +21474,11 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['r_14_1h'] < -75.0)
                             & (dataframe['ema_200_pct_change_288'] < 0.16)
                         )
-                        | (dataframe['crsi_1h'] > 40.0)
+                        |
+                        (
+                            (dataframe['crsi_1h'] > 40.0)
+                            & (dataframe['ema_200_pct_change_288'] < 0.2)
+                        )
                         |
                         (
                             (dataframe['cmf_1h'] > 0.0)
@@ -20801,17 +21488,37 @@ class NostalgiaForInfinityX(IStrategy):
                         | (dataframe['tpct_change_144'] < 0.14)
                         | (dataframe['close_max_48'] < (dataframe['close'] * 1.16))
                         | (dataframe['hl_pct_change_36'] < 0.16)
-                        | (dataframe['hl_pct_change_48_1h'] < 0.45)
+                        |
+                        (
+                            (dataframe['hl_pct_change_48_1h'] < 0.45)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                        )
                         |
                         (
                             (dataframe['ema_200'] > (dataframe['ema_200'].shift(12) * 1.01))
                             & (dataframe['cti_1h'] < 0.85)
                         )
-                        | (dataframe['close'] < dataframe['sma_30'] * 0.87)
-                        | (dataframe['close'] < dataframe['ema_20'] * 0.89)
+                        |
+                        (
+                            (dataframe['close'] < dataframe['sma_30'] * 0.87)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                        )
+                        |
+                        (
+                            (dataframe['close'] < dataframe['ema_20'] * 0.89)
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                        )
                         | (dataframe['close'] < dataframe['bb20_2_low'] * 0.97)
-                        | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.03))
-                        | (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.98))
+                        |
+                        (
+                            ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.03))
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                        )
+                        |
+                        (
+                            (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.98))
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                        )
                         |
                         (
                             ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.01))
@@ -20964,18 +21671,26 @@ class NostalgiaForInfinityX(IStrategy):
                         | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.054))
                     )
                     item_buy_logic.append(
-                       (
-                           (dataframe['btc_not_downtrend_1h'] == True)
-                           & (dataframe['ema_200_pct_change_288'] < 0.2)
-                       )
+                        (
+                            (dataframe['btc_not_downtrend_1h'] == True)
+                            & (dataframe['ema_200_pct_change_288'] < 0.2)
+                        )
                         |
                         (
                             (dataframe['cmf'] > -0.2)
                             & (dataframe['hl_pct_change_36'] < 0.3)
                         )
                         | (dataframe['mfi'] > 20.0)
-                        | (dataframe['rsi_14'] < 10.0)
-                        | (dataframe['cti_1h'] < -0.5)
+                        |
+                        (
+                            (dataframe['rsi_14'] < 10.0)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                        )
+                        |
+                        (
+                            (dataframe['cti_1h'] < -0.5)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                        )
                         | (dataframe['rsi_14_1h'] < 25.0)
                         | (dataframe['r_14_1h'] < -98.0)
                         |
@@ -20983,10 +21698,26 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['crsi_1h'] > 16.0)
                             & (dataframe['hl_pct_change_36'] < 0.3)
                         )
-                        | (dataframe['tpct_change_144'] < 0.2)
-                        | (dataframe['close_max_48'] < (dataframe['close'] * 1.2))
-                        | (dataframe['hl_pct_change_36'] < 0.2)
-                        | (dataframe['hl_pct_change_48_1h'] < 0.25)
+                        |
+                        (
+                            (dataframe['tpct_change_144'] < 0.2)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                        )
+                        |
+                        (
+                            (dataframe['close_max_48'] < (dataframe['close'] * 1.2))
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                        )
+                        |
+                        (
+                            (dataframe['hl_pct_change_36'] < 0.2)
+                            & (dataframe['btc_pct_close_max_72_5m'] < 1.04)
+                        )
+                        |
+                        (
+                            (dataframe['hl_pct_change_48_1h'] < 0.25)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
+                        )
                         | (dataframe['ema_200'] > (dataframe['ema_200'].shift(12) * 1.01))
                         | (dataframe['close'] > (dataframe['sma_200'] * 0.99))
                         | (dataframe['close'] < dataframe['sma_30'] * 0.81)
@@ -20994,7 +21725,11 @@ class NostalgiaForInfinityX(IStrategy):
                         | (dataframe['close'] < dataframe['bb20_2_low'] * 0.999)
                         | ((dataframe['ema_26'] - dataframe['ema_12']) > (dataframe['open'] * 0.08))
                         | (dataframe['close_15m'] < (dataframe['bb20_2_low_15m'] * 0.89))
-                        | ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.05))
+                        |
+                        (
+                            ((dataframe['ema_26_15m'] - dataframe['ema_12_15m']) > (dataframe['open_15m'] * 0.05))
+                            & (dataframe['hl_pct_change_36'] < 0.2)
+                        )
                         | (dataframe['cti_15m'] < -0.9)
                     )
 
@@ -21072,22 +21807,34 @@ class NostalgiaForInfinityX(IStrategy):
                             (dataframe['cmf'] > -0.3)
                             & (dataframe['crsi_1h'] > 8.0)
                             & (dataframe['ema_200_pct_change_144'] > -0.1)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.7)
+                            & (dataframe['ema_200_pct_change_288'] > -0.1)
                         )
                         |
                         (
                             (dataframe['mfi'] > 40.0)
                             & (dataframe['crsi_1h'] > 8.0)
                         )
-                        | (dataframe['rsi_14'] < 10.0)
+                        |
+                        (
+                            (dataframe['rsi_14'] < 10.0)
+                            & (dataframe['ema_200_pct_change_288'] > -0.1)
+                        )
                         | (dataframe['cti_1h'] < -0.95)
                         |
                         (
                             (dataframe['rsi_14_1h'] < 30.0)
                             & (dataframe['crsi_1h'] > 5.0)
                             & (dataframe['ema_200_pct_change_144'] > -0.1)
+                            & (dataframe['ema_200_pct_change_288'] > -0.1)
                         )
                         | (dataframe['r_14_1h'] < -94.0)
-                        | (dataframe['tpct_change_144'] < 0.08)
+                        |
+                        (
+                            (dataframe['tpct_change_144'] < 0.08)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.7)
+                        )
                         | (dataframe['close_max_48'] < (dataframe['close'] * 1.06))
                         | (dataframe['hl_pct_change_48_1h'] < 0.16)
                         |
@@ -21096,11 +21843,13 @@ class NostalgiaForInfinityX(IStrategy):
                             & (dataframe['btc_pct_close_max_72_5m'] < 1.01)
                             & (dataframe['bb20_width_1h'] > 0.18)
                             & (dataframe['cmf'] > -0.5)
+                            & (dataframe['hl_pct_change_48_1h'] < 0.5)
                         )
                         |
                         (
                             (dataframe['close'] > (dataframe['sma_200'] * 0.99))
                             & (dataframe['cmf'] > -0.5)
+                            & (dataframe['hl_pct_change_36'] < 0.12)
                         )
                         | (dataframe['close'] < dataframe['ema_20'] * 0.94)
                         | (dataframe['close'] < dataframe['bb20_2_low'] * 0.97)
@@ -21383,6 +22132,7 @@ class NostalgiaForInfinityX(IStrategy):
                             & (dataframe['ema_200_pct_change_288'] > -0.18)
                             & (dataframe['ema_200_pct_change_288'] < 0.08)
                             & (dataframe['crsi_1h'] > 6.0)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                         |
                         (
@@ -21393,6 +22143,7 @@ class NostalgiaForInfinityX(IStrategy):
                         (
                             (dataframe['rsi_14'] < 20.0)
                             & (dataframe['crsi_1h'] > 6.0)
+                            & (dataframe['hl_pct_change_36'] < 0.16)
                         )
                         | (dataframe['crsi'] > 20.0)
                         |
@@ -21434,6 +22185,7 @@ class NostalgiaForInfinityX(IStrategy):
                             & (dataframe['btc_not_downtrend_1h'] == True)
                             & (dataframe['hl_pct_change_48_1h'] < 0.8)
                             & (dataframe['crsi_1h'] > 10.0)
+                            & (dataframe['ema_200_pct_change_288'] > -0.12)
                             & (dataframe['ema_200_pct_change_288'] < 0.08)
                             & (dataframe['cmf'] > -0.3)
                         )
