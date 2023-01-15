@@ -16,6 +16,8 @@ jobs:
           mv NostalgiaForInfinityNextGen.py user_data/strategies
           curl -O https://raw.githubusercontent.com/iterativv/NostalgiaForInfinity/main/NostalgiaForInfinityX.py && \
           mv NostalgiaForInfinityX.py user_data/strategies
+          curl -O https://raw.githubusercontent.com/iterativv/NostalgiaForInfinity/main/NostalgiaForInfinityX2.py && \
+          mv NostalgiaForInfinityX2.py user_data/strategies
           curl -O https://raw.githubusercontent.com/ShahAnuj2610/my-freqtrade/master/user_data/blacklist-binance.json && \
           mv blacklist-binance.json user_data
           curl -O https://raw.githubusercontent.com/ShahAnuj2610/my-freqtrade/master/user_data/pairlist-volume-binance-usdt.json && \
