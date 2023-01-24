@@ -64,7 +64,7 @@ class NostalgiaForInfinityX2(IStrategy):
     INTERFACE_VERSION = 3
 
     def version(self) -> str:
-        return "v12.0.109"
+        return "v12.0.110"
 
     # ROI table:
     minimal_roi = {
@@ -280,7 +280,7 @@ class NostalgiaForInfinityX2(IStrategy):
                                                                             previous_time_profit_reached, enter_tags)
             if sell_max and signal_name_max is not None:
                 return True, f"{signal_name_max}_m"
-            if (current_profit > (previous_profit + 0.001)) and (previous_sell_reason not in ["exit_normal_bull_stoploss_doom"]):
+            if (current_profit > (previous_profit + 0.005)) and (previous_sell_reason not in ["exit_normal_bull_stoploss_doom"]):
                 # Update the target, raise it.
                 mark_pair, mark_signal = self.normal_bull_mark_profit_target(pair, True, previous_sell_reason, trade, current_time, current_rate, current_profit, last_candle, previous_candle_1)
                 if mark_pair:
@@ -355,25 +355,25 @@ class NostalgiaForInfinityX2(IStrategy):
                 self._remove_profit_target(pair)
                 return False, None
             if (0.001 <= current_profit < 0.01):
-                if (current_profit < (previous_profit - 0.005)):
-                    return True, previous_sell_reason
-            elif (0.01 <= current_profit < 0.02):
                 if (current_profit < (previous_profit - 0.01)):
                     return True, previous_sell_reason
-            elif (0.02 <= current_profit < 0.03):
+            elif (0.01 <= current_profit < 0.02):
                 if (current_profit < (previous_profit - 0.02)):
                     return True, previous_sell_reason
-            elif (0.03 <= current_profit < 0.05):
+            elif (0.02 <= current_profit < 0.03):
                 if (current_profit < (previous_profit - 0.03)):
                     return True, previous_sell_reason
-            elif (0.05 <= current_profit < 0.08):
+            elif (0.03 <= current_profit < 0.05):
                 if (current_profit < (previous_profit - 0.04)):
                     return True, previous_sell_reason
-            elif (0.08 <= current_profit < 0.12):
+            elif (0.05 <= current_profit < 0.08):
                 if (current_profit < (previous_profit - 0.05)):
                     return True, previous_sell_reason
-            elif (0.12 <= current_profit):
+            elif (0.08 <= current_profit < 0.12):
                 if (current_profit < (previous_profit - 0.06)):
+                    return True, previous_sell_reason
+            elif (0.12 <= current_profit):
+                if (current_profit < (previous_profit - 0.07)):
                     return True, previous_sell_reason
         else:
             return False, None
@@ -655,7 +655,7 @@ class NostalgiaForInfinityX2(IStrategy):
                                                                             previous_time_profit_reached, enter_tags)
             if sell_max and signal_name_max is not None:
                 return True, f"{signal_name_max}_m"
-            if (current_profit > (previous_profit + 0.001)) and (previous_sell_reason not in ["exit_normal_bear_stoploss_doom"]):
+            if (current_profit > (previous_profit + 0.005)) and (previous_sell_reason not in ["exit_normal_bear_stoploss_doom"]):
                 # Update the target, raise it.
                 mark_pair, mark_signal = self.normal_bear_mark_profit_target(pair, True, previous_sell_reason, trade, current_time, current_rate, current_profit, last_candle, previous_candle_1)
                 if mark_pair:
@@ -730,25 +730,25 @@ class NostalgiaForInfinityX2(IStrategy):
                 self._remove_profit_target(pair)
                 return False, None
             if (0.001 <= current_profit < 0.01):
-                if (current_profit < (previous_profit - 0.005)):
-                    return True, previous_sell_reason
-            elif (0.01 <= current_profit < 0.02):
                 if (current_profit < (previous_profit - 0.01)):
                     return True, previous_sell_reason
-            elif (0.02 <= current_profit < 0.03):
+            elif (0.01 <= current_profit < 0.02):
                 if (current_profit < (previous_profit - 0.02)):
                     return True, previous_sell_reason
-            elif (0.03 <= current_profit < 0.05):
+            elif (0.02 <= current_profit < 0.03):
                 if (current_profit < (previous_profit - 0.03)):
                     return True, previous_sell_reason
-            elif (0.05 <= current_profit < 0.08):
+            elif (0.03 <= current_profit < 0.05):
                 if (current_profit < (previous_profit - 0.04)):
                     return True, previous_sell_reason
-            elif (0.08 <= current_profit < 0.12):
+            elif (0.05 <= current_profit < 0.08):
                 if (current_profit < (previous_profit - 0.05)):
                     return True, previous_sell_reason
-            elif (0.12 <= current_profit):
+            elif (0.08 <= current_profit < 0.12):
                 if (current_profit < (previous_profit - 0.06)):
+                    return True, previous_sell_reason
+            elif (0.12 <= current_profit):
+                if (current_profit < (previous_profit - 0.07)):
                     return True, previous_sell_reason
         else:
             return False, None
@@ -4124,7 +4124,7 @@ class NostalgiaForInfinityX2(IStrategy):
         enter_tag = 'empty'
         if hasattr(trade, 'enter_tag') and trade.enter_tag is not None:
             enter_tag = trade.enter_tag
-            enter_tags = enter_tag.split()
+        enter_tags = enter_tag.split()
 
         # Rebuy mode, bull
         if all(c in self.rebuy_mode_bull_tags for c in enter_tags):
