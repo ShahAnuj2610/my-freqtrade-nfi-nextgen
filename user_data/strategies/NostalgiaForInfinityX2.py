@@ -64,7 +64,7 @@ class NostalgiaForInfinityX2(IStrategy):
     INTERFACE_VERSION = 3
 
     def version(self) -> str:
-        return "v12.0.131"
+        return "v12.0.132"
 
     # ROI table:
     minimal_roi = {
@@ -4022,21 +4022,9 @@ class NostalgiaForInfinityX2(IStrategy):
             if sell and (signal_name is not None):
                 return f"{signal_name} ( {enter_tag})"
 
-        # Normal mode, bear
-        if any(c in self.normal_mode_bear_tags for c in enter_tags):
-            sell, signal_name = self.exit_normal_bear(pair, current_rate, profit, max_profit, max_loss, last_candle, previous_candle_1, previous_candle_2, previous_candle_3, previous_candle_4, previous_candle_5, trade, current_time, enter_tags)
-            if sell and (signal_name is not None):
-                return f"{signal_name} ( {enter_tag})"
-
-        # Pump mpde, bull
+        # Pump mode, bull
         if any(c in self.pump_mode_bull_tags for c in enter_tags):
             sell, signal_name = self.exit_pump_bull(pair, current_rate, profit, max_profit, max_loss, last_candle, previous_candle_1, previous_candle_2, previous_candle_3, previous_candle_4, previous_candle_5, trade, current_time, enter_tags)
-            if sell and (signal_name is not None):
-                return f"{signal_name} ( {enter_tag})"
-
-        # Pump mode, bear
-        if any(c in self.pump_mode_bear_tags for c in enter_tags):
-            sell, signal_name = self.exit_pump_bear(pair, current_rate, profit, max_profit, max_loss, last_candle, previous_candle_1, previous_candle_2, previous_candle_3, previous_candle_4, previous_candle_5, trade, current_time, enter_tags)
             if sell and (signal_name is not None):
                 return f"{signal_name} ( {enter_tag})"
 
@@ -4046,21 +4034,9 @@ class NostalgiaForInfinityX2(IStrategy):
             if sell and (signal_name is not None):
                 return f"{signal_name} ( {enter_tag})"
 
-        # Quick mode, bear
-        if any(c in self.quick_mode_bear_tags for c in enter_tags):
-            sell, signal_name = self.exit_quick_bear(pair, current_rate, profit, max_profit, max_loss, last_candle, previous_candle_1, previous_candle_2, previous_candle_3, previous_candle_4, previous_candle_5, trade, current_time, enter_tags)
-            if sell and (signal_name is not None):
-                return f"{signal_name} ( {enter_tag})"
-
         # Rebuy mode, bull
         if all(c in self.rebuy_mode_bull_tags for c in enter_tags):
             sell, signal_name = self.exit_rebuy_bull(pair, current_rate, profit, max_profit, max_loss, last_candle, previous_candle_1, previous_candle_2, previous_candle_3, previous_candle_4, previous_candle_5, trade, current_time, enter_tags)
-            if sell and (signal_name is not None):
-                return f"{signal_name} ( {enter_tag})"
-
-        # Rebuy mode, bear
-        if all(c in self.rebuy_mode_bear_tags for c in enter_tags):
-            sell, signal_name = self.exit_rebuy_bear(pair, current_rate, profit, max_profit, max_loss, last_candle, previous_candle_1, previous_candle_2, previous_candle_3, previous_candle_4, previous_candle_5, trade, current_time, enter_tags)
             if sell and (signal_name is not None):
                 return f"{signal_name} ( {enter_tag})"
 
@@ -4070,9 +4046,10 @@ class NostalgiaForInfinityX2(IStrategy):
             if sell and (signal_name is not None):
                 return f"{signal_name} ( {enter_tag})"
 
-        # Long mode, bear
-        if any(c in self.long_mode_bear_tags for c in enter_tags):
-            sell, signal_name = self.exit_long_bear(pair, current_rate, profit, max_profit, max_loss, last_candle, previous_candle_1, previous_candle_2, previous_candle_3, previous_candle_4, previous_candle_5, trade, current_time, enter_tags)
+        # Trades not opened by X2
+        if not any(c in (self.normal_mode_bull_tags + self.pump_mode_bull_tags + self.quick_mode_bull_tags + self.rebuy_mode_bull_tags + self.long_mode_bull_tags) for c in enter_tags):
+            # use normal mode for such trades
+            sell, signal_name = self.exit_normal_bull(pair, current_rate, profit, max_profit, max_loss, last_candle, previous_candle_1, previous_candle_2, previous_candle_3, previous_candle_4, previous_candle_5, trade, current_time, enter_tags)
             if sell and (signal_name is not None):
                 return f"{signal_name} ( {enter_tag})"
 
