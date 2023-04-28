@@ -1,17 +1,5 @@
+FROM freqtradeorg/freqtrade:stable
 
-<?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
- "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html>
-  <head>
-    <title>503 Backend is unhealthy</title>
-  </head>
-  <body>
-    <h1>Error 503 Backend is unhealthy</h1>
-    <p>Backend is unhealthy</p>
-    <h3>Error 54113</h3>
-    <p>Details: cache-bur-kbur8200052-BUR 1682651643 1542618719</p>
-    <hr>
-    <p>Varnish cache server</p>
-  </body>
-</html>
+COPY --chown=1000:1000  requirements.txt /freqtrade
+
+RUN pip install --user --no-cache-dir --no-build-isolation -r /freqtrade/requirements.txt
